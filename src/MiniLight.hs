@@ -1,9 +1,19 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE StandaloneDeriving #-}
 module MiniLight where
 
-import Control.Monad.Reader
+import Capability.Reader
 import Control.Monad.Catch
+import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.Reader hiding (MonadReader)
 import qualified Data.Text as T
+import GHC.Generics
 import Lens.Micro
 import qualified SDL
 import qualified SDL.Font
@@ -11,26 +21,24 @@ import qualified SDL.Font
 data LightEnv = LightEnv {
   renderer :: SDL.Renderer
 }
+  deriving Generic
 
-class HasLightEnv env where
-  rendererL :: Lens' env SDL.Renderer
+newtype LightT (m :: * -> *) a = LightT { unwrapLightT :: LightEnv -> m a }
+  deriving (Functor, Applicative, Monad, MonadIO, MonadThrow, MonadCatch, MonadMask) via (ReaderT LightEnv m)
 
-instance HasLightEnv LightEnv where
-  rendererL = lens renderer (\env r -> env { renderer = r })
+deriving
+  via Field "renderer" "env" (MonadReader (ReaderT LightEnv m))
+  instance Monad m => HasReader "renderer" SDL.Renderer (LightT m)
 
-newtype LightT env m a = LightT { runLightT' :: ReaderT env m a }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadThrow) via (ReaderT env m)
-
-type MiniLight = LightT LightEnv IO
+type MiniLight = LightT IO
 
 runLightT
-  :: (HasLightEnv env, MonadIO m, MonadMask m)
-  => (LightEnv -> env)
-  -> LightT env m a
+  :: (MonadIO m, MonadMask m)
+  => LightT m a
   -> m a
-runLightT init prog = withSDL $ withWindow $ \window -> do
-  renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
-  runReaderT (runLightT' prog) $ init $ LightEnv {renderer = renderer}
+runLightT prog = withSDL $ withWindow $ \window -> do
+  rend <- SDL.createRenderer window (-1) SDL.defaultRenderer
+  unwrapLightT prog $ LightEnv {renderer = rend}
 
 --
 
@@ -57,6 +65,4 @@ withBlendedText
   -> m a
 withBlendedText font text color =
   bracket (SDL.Font.blended font color text) SDL.freeSurface
-
-
 
