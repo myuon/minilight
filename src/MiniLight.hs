@@ -1,4 +1,4 @@
-{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module MiniLight where
 
 import Control.Monad.Reader
@@ -19,7 +19,11 @@ instance HasLightEnv LightEnv where
   rendererL = lens renderer (\env r -> env { renderer = r })
 
 newtype LightT env m a = LightT { runLightT' :: ReaderT env m a }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadThrow) via (ReaderT env m)
+  deriving (Functor, Applicative, Monad, MonadIO, MonadThrow, MonadMask, MonadCatch)
+
+instance Monad m => MonadReader env (LightT env m) where
+  ask = LightT ask
+  local f = LightT . local f . runLightT'
 
 type MiniLight = LightT LightEnv IO
 
