@@ -1,29 +1,33 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module MiniLight where
+module MiniLight (
+  module MiniLight.Figure,
+  module MiniLight.Light,
+
+  MiniLight,
+  runLightT,
+
+  withSDL,
+  withWindow,
+  withFont,
+  withBlendedText
+) where
 
 import Control.Monad.Reader
 import Control.Monad.Catch
 import qualified Data.Text as T
 import Lens.Micro
+import Lens.Micro.Mtl
+import MiniLight.Light
+import MiniLight.Figure
 import qualified SDL
 import qualified SDL.Font
+import qualified SDL.Vect as Vect
 
 data LightEnv = LightEnv {
   renderer :: SDL.Renderer
 }
 
-class HasLightEnv env where
-  rendererL :: Lens' env SDL.Renderer
-
 instance HasLightEnv LightEnv where
   rendererL = lens renderer (\env r -> env { renderer = r })
-
-newtype LightT env m a = LightT { runLightT' :: ReaderT env m a }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadThrow, MonadMask, MonadCatch)
-
-instance Monad m => MonadReader env (LightT env m) where
-  ask = LightT ask
-  local f = LightT . local f . runLightT'
 
 type MiniLight = LightT LightEnv IO
 
@@ -62,5 +66,19 @@ withBlendedText
 withBlendedText font text color =
   bracket (SDL.Font.blended font color text) SDL.freeSurface
 
+instance Rendering (Figure MiniLight) where
+  translate v fig =
+    let cv = fmap toEnum v in
+    Figure $ \color k -> getFigure fig color (\tex area -> k tex (centerL +~ cv $ area))
+
+  colorize color fig = Figure $ \_ -> getFigure fig color
+
+  text font txt = Figure $ \color k -> do
+    renderer <- view rendererL
+
+    withBlendedText font txt color $ \surf -> do
+      texture <- SDL.createTextureFromSurface renderer surf
+      tinfo <- SDL.queryTexture texture
+      k texture (SDL.Rectangle (SDL.P 0) (Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo)))
 
 
