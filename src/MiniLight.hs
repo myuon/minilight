@@ -20,6 +20,7 @@ import MiniLight.Light
 import MiniLight.Figure
 import qualified SDL
 import qualified SDL.Font
+import qualified SDL.Image
 import qualified SDL.Vect as Vect
 
 data LightEnv = LightEnv {
@@ -80,5 +81,12 @@ instance Rendering (Figure MiniLight) where
       texture <- SDL.createTextureFromSurface renderer surf
       tinfo <- SDL.queryTexture texture
       k texture (SDL.Rectangle (SDL.P 0) (Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo)))
+
+  picture filepath = Figure $ \_ k -> do
+    renderer <- view rendererL
+
+    texture <- SDL.Image.loadTexture renderer filepath
+    tinfo <- SDL.queryTexture texture
+    k texture (SDL.Rectangle (SDL.P 0) (Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo)))
 
 

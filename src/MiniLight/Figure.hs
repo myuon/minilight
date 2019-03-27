@@ -42,3 +42,4 @@ class Rendering r where
   colorize :: Vect.V4 Word8 -> r -> r
 
   text :: SDL.Font.Font -> T.Text -> r
+  picture :: FilePath -> r
