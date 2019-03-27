@@ -89,4 +89,7 @@ instance Rendering (Figure MiniLight) where
     tinfo <- SDL.queryTexture texture
     k texture (SDL.Rectangle (SDL.P 0) (Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo)))
 
+  texture t = Figure $ \_ k -> do
+    tinfo <- SDL.queryTexture t
+    k t (SDL.Rectangle (SDL.P 0) (Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo)))
 

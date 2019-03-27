@@ -21,6 +21,12 @@ centerL = lens
 
 newtype Figure m = Figure { getFigure :: forall r. Vect.V4 Word8 -> (SDL.Texture -> SDL.Rectangle CInt -> m r) -> m r }
 
+createFigureTexture
+  :: (HasLightEnv env, MonadIO m)
+  => Figure (LightT env m)
+  -> LightT env m SDL.Texture
+createFigureTexture fig = getFigure fig 0 (\t _ -> return t)
+
 render
   :: (HasLightEnv env, MonadIO m) => Figure (LightT env m) -> LightT env m ()
 render fig = do
@@ -43,3 +49,4 @@ class Rendering r where
 
   text :: SDL.Font.Font -> T.Text -> r
   picture :: FilePath -> r
+  texture :: SDL.Texture -> r
