@@ -1,6 +1,7 @@
 module MiniLight (
   module MiniLight.Figure,
   module MiniLight.Light,
+  module MiniLight.Layers,
 
   MiniLight,
   runLightT,
@@ -18,6 +19,7 @@ import Lens.Micro
 import Lens.Micro.Mtl
 import MiniLight.Light
 import MiniLight.Figure
+import MiniLight.Layers
 import qualified SDL
 import qualified SDL.Font
 import qualified SDL.Image
