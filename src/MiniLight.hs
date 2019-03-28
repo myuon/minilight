@@ -12,8 +12,9 @@ module MiniLight (
   withBlendedText
 ) where
 
-import Control.Monad.Reader
 import Control.Monad.Catch
+import Control.Monad.Reader
+import Control.Monad.IO.Unlift
 import qualified Data.Text as T
 import Lens.Micro
 import Lens.Micro.Mtl
@@ -25,23 +26,28 @@ import qualified SDL.Font
 import qualified SDL.Image
 import qualified SDL.Vect as Vect
 
-data LightEnv = LightEnv {
-  renderer :: SDL.Renderer
-}
+data LightEnv = LightEnv
+  { renderer :: SDL.Renderer
+  , resourceMap :: ResourceMap
+  }
 
 instance HasLightEnv LightEnv where
   rendererL = lens renderer (\env r -> env { renderer = r })
+  resourceMapL = lens resourceMap (\env r -> env { resourceMap = r })
 
 type MiniLight = LightT LightEnv IO
 
 runLightT
-  :: (HasLightEnv env, MonadIO m, MonadMask m)
+  :: (HasLightEnv env, MonadIO m, MonadMask m, MonadUnliftIO m)
   => (LightEnv -> env)
   -> LightT env m a
   -> m a
 runLightT init prog = withSDL $ withWindow $ \window -> do
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
-  runReaderT (runLightT' prog) $ init $ LightEnv {renderer = renderer}
+  withResourceMap $ \rmap -> runReaderT (runLightT' prog) $ init $ LightEnv
+    { renderer    = renderer
+    , resourceMap = rmap
+    }
 
 --
 
