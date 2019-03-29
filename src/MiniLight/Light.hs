@@ -6,11 +6,16 @@ module MiniLight.Light (
 
   HasLightEnv (..),
   LightT (..),
+
+  ReleaseKey,
+  allocate,
+  register,
+  release
 ) where
 
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
-import Control.Monad.Trans.Resource (MonadResource(..), runResourceT)
+import Control.Monad.Trans.Resource (MonadResource(..), runResourceT, ReleaseKey, allocate, register, release)
 import Control.Monad.Trans.Resource.Internal (ReleaseMap, ResourceT (..))
 import Control.Monad.Reader
 import Data.IORef
