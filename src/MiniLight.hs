@@ -7,6 +7,7 @@ module MiniLight (
   MiniLight,
   runLightT,
   liftMiniLight,
+  transEnvLightT,
 
   withSDL,
   withWindow,
@@ -58,6 +59,9 @@ liftMiniLight m = do
   LightT $ ReaderT $ \env -> liftIO $ runReaderT
     (runLightT' m)
     (LightEnv {renderer = renderer, resourceMap = resourceMap})
+
+transEnvLightT :: (env' -> env) -> LightT env m a -> LightT env' m a
+transEnvLightT f m = LightT $ ReaderT $ runReaderT (runLightT' m) . f
 
 --
 
