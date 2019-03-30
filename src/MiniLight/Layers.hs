@@ -15,9 +15,11 @@ newWindowLayer
   :: (HasLightEnv env, MonadIO m, Rendering (Figure (LightT env m)))
   => FilePath
   -> Vect.V2 CInt
-  -> LightT env m Texture
+  -> LightT env m (Figure (LightT env m))
 newWindowLayer path size = do
-  Texture (tex, SDL.Rectangle _ texSize) <- getTexture $ picture path
+  let pic = picture path
+  tex      <- getTexture pic
+  texSize  <- getTextureSize pic
   tinfo    <- SDL.queryTexture tex
   renderer <- view rendererL
 
@@ -52,5 +54,5 @@ newWindowLayer path size = do
 
   SDL.rendererRenderTarget renderer SDL.$= Nothing
 
-  return $ Texture (target, SDL.Rectangle 0 size)
+  fromTexture target
 

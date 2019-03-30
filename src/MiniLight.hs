@@ -92,9 +92,21 @@ withBlendedText font text color =
 instance Rendering (Figure MiniLight) where
   translate v fig =
     let cv = fmap toEnum v in
-    Figure $ \color k -> getFigure fig color (\tex area -> k tex (centerL +~ cv $ area))
+    Figure $ \color k -> getFigure fig color (\tex srcArea tgtArea -> k tex srcArea (centerL +~ cv $ tgtArea))
 
   colorize color fig = Figure $ \_ -> getFigure fig color
+
+  -- srcArea and tgtArea should be the same size
+  clip (SDL.Rectangle (SDL.P point') size') fig = Figure $ \color k -> do
+    tex <- getFigure fig color (\x _ _ -> return x)
+    srcArea <- getFigure fig color (\_ y _ -> return y)
+    tgtArea <- getFigure fig color (\_ _ y -> return y)
+
+    let SDL.Rectangle (SDL.P point) size = srcArea
+    let newSrcArea = (SDL.Rectangle (SDL.P $ point + fmap toEnum point') (fmap toEnum size'))
+    let SDL.Rectangle (SDL.P point) size = tgtArea
+    let newTgtArea = (SDL.Rectangle (SDL.P $ point + fmap toEnum point') (fmap toEnum size'))
+    k tex newSrcArea newTgtArea
 
   text font txt = Figure $ \color k -> do
     renderer <- view rendererL
@@ -102,14 +114,14 @@ instance Rendering (Figure MiniLight) where
     withBlendedText font txt color $ \surf -> do
       texture <- SDL.createTextureFromSurface renderer surf
       tinfo <- SDL.queryTexture texture
-      k texture (SDL.Rectangle (SDL.P 0) (Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo)))
+      let rect = SDL.Rectangle (SDL.P 0) (Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo))
+      k texture rect rect
 
   picture filepath = Figure $ \_ k -> do
     renderer <- view rendererL
 
     texture <- SDL.Image.loadTexture renderer filepath
     tinfo <- SDL.queryTexture texture
-    k texture (SDL.Rectangle (SDL.P 0) (Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo)))
-
-  texture (Texture (tex, size)) = Figure $ \_ k -> k tex size
+    let rect = SDL.Rectangle (SDL.P 0) (Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo))
+    k texture rect rect
 
