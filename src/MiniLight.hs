@@ -3,8 +3,10 @@ module MiniLight (
   module MiniLight.Light,
   module MiniLight.Layers,
 
+  LightEnv,
   MiniLight,
   runLightT,
+  liftMiniLight,
 
   withSDL,
   withWindow,
@@ -35,8 +37,6 @@ instance HasLightEnv LightEnv where
   rendererL = lens renderer (\env r -> env { renderer = r })
   resourceMapL = lens resourceMap (\env r -> env { resourceMap = r })
 
-type MiniLight = LightT LightEnv IO
-
 runLightT
   :: (HasLightEnv env, MonadIO m, MonadMask m, MonadUnliftIO m)
   => (LightEnv -> env)
@@ -48,6 +48,16 @@ runLightT init prog = withSDL $ withWindow $ \window -> do
     { renderer    = renderer
     , resourceMap = rmap
     }
+
+type MiniLight = LightT LightEnv IO
+
+liftMiniLight :: (HasLightEnv env, MonadIO m) => MiniLight a -> LightT env m a
+liftMiniLight m = do
+  renderer    <- view rendererL
+  resourceMap <- view resourceMapL
+  LightT $ ReaderT $ \env -> liftIO $ runReaderT
+    (runLightT' m)
+    (LightEnv {renderer = renderer, resourceMap = resourceMap})
 
 --
 
