@@ -17,8 +17,8 @@ newWindowLayer
   -> Vect.V2 CInt
   -> LightT env m Texture
 newWindowLayer path size = do
-  texture  <- createFigureTexture $ picture path
-  tinfo    <- SDL.queryTexture texture
+  Texture (tex, SDL.Rectangle _ texSize) <- getTexture $ picture path
+  tinfo    <- SDL.queryTexture tex
   renderer <- view rendererL
 
   target   <- SDL.createTexture renderer
@@ -28,8 +28,7 @@ newWindowLayer path size = do
   SDL.rendererRenderTarget renderer SDL.$= Just target
   SDL.textureBlendMode target SDL.$= SDL.BlendAlphaBlend
 
-  let tileSize =
-        V2 (SDL.textureWidth tinfo `div` 3) (SDL.textureHeight tinfo `div` 3)
+  let tileSize = fmap (`div` 3) texSize
 
   forM_ [0 .. 2] $ \ix -> forM_ [0 .. 2] $ \iy -> do
     let targetSize = V2
@@ -47,11 +46,11 @@ newWindowLayer path size = do
 
     SDL.copy
       renderer
-      texture
+      tex
       (Just $ SDL.Rectangle (SDL.P (tileSize * Vect.V2 ix iy)) tileSize)
       (Just $ SDL.Rectangle (SDL.P targetLoc) targetSize)
 
   SDL.rendererRenderTarget renderer SDL.$= Nothing
 
-  return $ Texture (target, size)
+  return $ Texture (target, SDL.Rectangle 0 size)
 
