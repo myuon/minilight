@@ -37,11 +37,12 @@ render fig = do
   area    <- getFigure fig color (\_ y -> return y)
 
   SDL.copy renderer texture Nothing $ Just $ area
-  SDL.destroyTexture texture
 
 renders
   :: (HasLightEnv env, MonadIO m) => [Figure (LightT env m)] -> LightT env m ()
 renders = mapM_ render
+
+newtype Texture = Texture (SDL.Texture, Vect.V2 CInt)
 
 class Rendering r where
   translate :: Vect.V2 Int -> r -> r
@@ -49,4 +50,4 @@ class Rendering r where
 
   text :: SDL.Font.Font -> T.Text -> r
   picture :: FilePath -> r
-  texture :: SDL.Texture -> r
+  texture :: Texture -> r
