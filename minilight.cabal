@@ -23,6 +23,7 @@ library
     MiniLight.Component
     MiniLight.Component.Types
     MiniLight.Component.Layer
+    MiniLight.Component.AnimationLayer
     MiniLight.Component.MessageEngine
   -- other-modules:
   -- other-extensions:

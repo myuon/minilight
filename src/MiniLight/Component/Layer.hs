@@ -19,8 +19,12 @@ data Layer = Layer {
 instance ComponentUnit Layer where
   draw comp = liftMiniLight $ render $ layer comp
 
-new :: FilePath -> Vect.V2 CInt -> MiniLight Layer
-new path size = do
+new :: FilePath -> MiniLight Layer
+new path = do
+  return $ Layer {layer = picture path}
+
+newNineTile :: FilePath -> Vect.V2 CInt -> MiniLight Layer
+newNineTile path size = do
   let pic = picture path
   tex      <- getTexture pic
   texSize  <- getTextureSize pic

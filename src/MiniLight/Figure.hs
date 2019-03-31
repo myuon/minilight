@@ -88,8 +88,8 @@ instance Rendering (Figure MiniLight) where
 
     let SDL.Rectangle (SDL.P point) size = srcArea
     let newSrcArea = (SDL.Rectangle (SDL.P $ point + fmap toEnum point') (fmap toEnum size'))
-    let SDL.Rectangle (SDL.P point) size = tgtArea
-    let newTgtArea = (SDL.Rectangle (SDL.P $ point + fmap toEnum point') (fmap toEnum size'))
+    let SDL.Rectangle p size = tgtArea
+    let newTgtArea = (SDL.Rectangle p (fmap toEnum size'))
     k tex newSrcArea newTgtArea
 
   text font txt = Figure $ \color k -> do
