@@ -10,7 +10,6 @@ module MiniLight.Light (
 ) where
 
 import Control.Monad.Catch
-import Control.Monad.IO.Unlift
 import Control.Monad.Reader
 import Lens.Micro
 import Lens.Micro.Mtl
