@@ -8,6 +8,9 @@ module MiniLight (
   runLightT,
   liftMiniLight,
   transEnvLightT,
+  LoopConfig (..),
+  LoopState (..),
+  runMainloop,
 
   withSDL,
   withWindow,
@@ -15,9 +18,13 @@ module MiniLight (
   withBlendedText
 ) where
 
+import Control.Concurrent (threadDelay)
 import Control.Monad.Catch
 import Control.Monad.Reader
+import Control.Monad.State
 import Control.Monad.IO.Unlift
+import Data.IORef
+import qualified Data.Map as M
 import qualified Data.Text as T
 import Lens.Micro
 import Lens.Micro.Mtl
@@ -62,6 +69,52 @@ liftMiniLight m = do
 
 transEnvLightT :: (env' -> env) -> LightT env m a -> LightT env' m a
 transEnvLightT f m = LightT $ ReaderT $ runReaderT (runLightT' m) . f
+
+data LoopConfig = LoopConfig {
+  watchKeys :: Maybe [SDL.Scancode]
+}
+
+data LoopState = LoopState {
+  keyStates :: M.Map SDL.Scancode Int,
+  events :: [SDL.Event]
+}
+
+runMainloop
+  :: (HasLightEnv env, MonadIO m)
+  => LoopConfig  -- ^ loop config
+  -> s  -- ^ initial state
+  -> (LoopState -> s -> LightT env m s)  -- ^ loop
+  -> LightT env m ()
+runMainloop conf initial loop = do
+  let loopState = LoopState {keyStates = M.empty, events = []}
+  go loopState initial
+ where
+  go loopState s = do
+    s' <- loop loopState s
+
+    liftIO $ threadDelay (100000 `div` 60)
+    events <- SDL.pollEvents
+    keys   <- SDL.getKeyboardState
+
+    let
+      specifiedKeys = M.mapWithKey
+        (\k v -> if keys k then v + 1 else 0)
+        ( maybe
+            id
+            (\specified m -> M.fromList $ map (\s -> (s, m M.! s)) specified)
+            (watchKeys conf)
+        $ keyStates loopState
+        )
+    let loopState = LoopState {keyStates = specifiedKeys, events = events}
+    let quit = any
+          ( \event -> case SDL.eventPayload event of
+            SDL.WindowClosedEvent _ -> True
+            SDL.QuitEvent           -> True
+            _                       -> False
+          )
+          events
+
+    unless quit $ go loopState s'
 
 --
 

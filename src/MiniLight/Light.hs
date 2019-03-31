@@ -19,6 +19,7 @@ import Control.Monad.Trans.Resource (MonadResource(..), runResourceT, ReleaseKey
 import Control.Monad.Trans.Resource.Internal (ReleaseMap, ResourceT (..))
 import Control.Monad.Reader
 import Data.IORef
+import qualified Data.Map as M
 import Lens.Micro
 import Lens.Micro.Mtl
 import qualified SDL
