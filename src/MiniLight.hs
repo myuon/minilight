@@ -85,12 +85,18 @@ runMainloop
   -> s  -- ^ initial state
   -> (LoopState -> s -> LightT env m s)  -- ^ loop
   -> LightT env m ()
-runMainloop conf initial loop = do
-  let loopState = LoopState {keyStates = M.empty, events = []}
-  go loopState initial
+runMainloop conf initial loop = go
+  (LoopState {keyStates = M.empty, events = []})
+  initial
  where
   go loopState s = do
+    renderer <- view rendererL
+    liftIO $ SDL.rendererDrawColor renderer SDL.$= 255
+    liftIO $ SDL.clear renderer
+
     s' <- loop loopState s
+
+    liftIO $ SDL.present renderer
 
     liftIO $ threadDelay (100000 `div` 60)
     events <- SDL.pollEvents
