@@ -32,10 +32,7 @@ runLightT
   -> m a
 runLightT init prog = withSDL $ withWindow $ \window -> do
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
-  withResourceMap $ \rmap -> runReaderT (runLightT' prog) $ init $ LightEnv
-    { renderer    = renderer
-    , resourceMap = rmap
-    }
+  runReaderT (runLightT' prog) $ init $ LightEnv {renderer = renderer}
 
 data LoopConfig = LoopConfig {
   watchKeys :: Maybe [SDL.Scancode]
