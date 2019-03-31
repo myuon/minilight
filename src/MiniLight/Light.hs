@@ -19,11 +19,10 @@ module MiniLight.Light (
 
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
-import Control.Monad.Trans.Resource (MonadResource(..), runResourceT, ReleaseKey, allocate, register, release)
+import Control.Monad.Trans.Resource (runResourceT, ReleaseKey, allocate, register, release)
 import Control.Monad.Trans.Resource.Internal (ReleaseMap, ResourceT (..))
 import Control.Monad.Reader
 import Data.IORef
-import qualified Data.Map as M
 import Lens.Micro
 import Lens.Micro.Mtl
 import qualified SDL
@@ -63,7 +62,7 @@ liftMiniLight :: (HasLightEnv env, MonadIO m) => MiniLight a -> LightT env m a
 liftMiniLight m = do
   renderer    <- view rendererL
   resourceMap <- view resourceMapL
-  LightT $ ReaderT $ \env -> liftIO $ runReaderT
+  LightT $ ReaderT $ \_ -> liftIO $ runReaderT
     (runLightT' m)
     (LightEnv {renderer = renderer, resourceMap = resourceMap})
 

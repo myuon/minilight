@@ -4,7 +4,6 @@ module MiniLight.Figure where
 
 import Control.Monad.Catch
 import Control.Monad.IO.Class
-import Data.Reflection
 import qualified Data.Text as T
 import Data.Word (Word8)
 import Foreign.C.Types (CInt)
@@ -36,7 +35,7 @@ fromTexture :: MonadIO m => SDL.Texture -> m (Figure m)
 fromTexture tex = do
   tinfo <- SDL.queryTexture tex
   let size = Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo)
-  return $ Figure $ \color k -> do
+  return $ Figure $ \_ k -> do
     k tex (SDL.Rectangle 0 size) (SDL.Rectangle 0 size)
 
 render
@@ -86,9 +85,9 @@ instance Rendering (Figure MiniLight) where
     srcArea <- getFigure fig color (\_ y _ -> return y)
     tgtArea <- getFigure fig color (\_ _ y -> return y)
 
-    let SDL.Rectangle (SDL.P point) size = srcArea
+    let SDL.Rectangle (SDL.P point) _ = srcArea
     let newSrcArea = (SDL.Rectangle (SDL.P $ point + fmap toEnum point') (fmap toEnum size'))
-    let SDL.Rectangle p size = tgtArea
+    let SDL.Rectangle p _ = tgtArea
     let newTgtArea = (SDL.Rectangle p (fmap toEnum size'))
     k tex newSrcArea newTgtArea
 

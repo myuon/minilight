@@ -49,3 +49,4 @@ library
     FlexibleInstances
     OverloadedStrings
     MultiParamTypeClasses
+  ghc-options: -threaded -O2 -Wall -Wno-name-shadowing

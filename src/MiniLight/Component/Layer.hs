@@ -1,7 +1,6 @@
 module MiniLight.Component.Layer where
 
 import Control.Monad
-import Control.Monad.IO.Class
 import Foreign.C.Types (CInt)
 import Lens.Micro
 import Lens.Micro.Mtl

@@ -1,10 +1,8 @@
 module MiniLight.Component.AnimationLayer where
 
 import Control.Monad.State
-import Foreign.C.Types (CInt)
 import Linear
 import Lens.Micro
-import Lens.Micro.Mtl
 import MiniLight.Figure
 import MiniLight.Light
 import qualified MiniLight.Component.Layer as L

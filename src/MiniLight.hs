@@ -16,19 +16,14 @@ module MiniLight (
 import Control.Concurrent (threadDelay)
 import Control.Monad.Catch
 import Control.Monad.Reader
-import Control.Monad.State
 import Control.Monad.IO.Unlift
-import Data.IORef
 import qualified Data.Map as M
-import qualified Data.Text as T
-import Lens.Micro
 import Lens.Micro.Mtl
 import MiniLight.Component
 import MiniLight.Light
 import MiniLight.Figure
 import qualified SDL
 import qualified SDL.Font
-import qualified SDL.Vect as Vect
 
 runLightT
   :: (HasLightEnv env, MonadIO m, MonadMask m, MonadUnliftIO m)
