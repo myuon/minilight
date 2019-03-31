@@ -1,4 +1,4 @@
-module MiniLight.Layers where
+module MiniLight.Component.Layer where
 
 import Control.Monad
 import Control.Monad.IO.Class
@@ -6,17 +6,21 @@ import Foreign.C.Types (CInt)
 import Lens.Micro
 import Lens.Micro.Mtl
 import Linear
+import MiniLight.Component.Types
 import MiniLight.Light
 import MiniLight.Figure
 import qualified SDL
 import qualified SDL.Vect as Vect
 
-newWindowLayer
-  :: (HasLightEnv env, MonadIO m, Rendering (Figure (LightT env m)))
-  => FilePath
-  -> Vect.V2 CInt
-  -> LightT env m (Figure (LightT env m))
-newWindowLayer path size = do
+data Layer = Layer {
+  layer :: Figure MiniLight
+}
+
+instance ComponentUnit Layer where
+  draw comp = liftMiniLight $ render $ layer comp
+
+new :: FilePath -> Vect.V2 CInt -> MiniLight Layer
+new path size = do
   let pic = picture path
   tex      <- getTexture pic
   texSize  <- getTextureSize pic
@@ -54,5 +58,6 @@ newWindowLayer path size = do
 
   SDL.rendererRenderTarget renderer SDL.$= Nothing
 
-  fromTexture target
+  tex <- fromTexture target
+  return $ Layer {layer = tex}
 

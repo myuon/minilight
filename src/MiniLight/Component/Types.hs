@@ -6,7 +6,10 @@ import MiniLight.Light
 
 class ComponentUnit c where
   update :: (HasLightEnv env, MonadIO m) => c -> LightT env m c
+  update = return
+
   draw :: (HasLightEnv env, MonadIO m) => c -> LightT env m ()
+  draw _ = return ()
 
 data Component = forall c. ComponentUnit c => Component { getComponent :: c }
 

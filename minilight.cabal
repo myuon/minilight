@@ -19,10 +19,10 @@ library
   exposed-modules:
     MiniLight
     MiniLight.Figure
-    MiniLight.Layers
     MiniLight.Light
     MiniLight.Component
     MiniLight.Component.Types
+    MiniLight.Component.Layer
     MiniLight.Component.MessageEngine
   -- other-modules:
   -- other-extensions:

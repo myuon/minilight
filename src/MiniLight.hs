@@ -1,7 +1,6 @@
 module MiniLight (
   module MiniLight.Figure,
   module MiniLight.Light,
-  module MiniLight.Layers,
   module MiniLight.Component,
 
   runLightT,
@@ -27,7 +26,6 @@ import Lens.Micro.Mtl
 import MiniLight.Component
 import MiniLight.Light
 import MiniLight.Figure
-import MiniLight.Layers
 import qualified SDL
 import qualified SDL.Font
 import qualified SDL.Vect as Vect
