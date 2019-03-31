@@ -21,6 +21,9 @@ library
     MiniLight.Figure
     MiniLight.Layers
     MiniLight.Light
+    MiniLight.Component
+    MiniLight.Component.Types
+    MiniLight.Component.MessageEngine
   -- other-modules:
   -- other-extensions:
   build-depends:
