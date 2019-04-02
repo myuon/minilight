@@ -1,3 +1,4 @@
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 module MiniLight.Figure where
@@ -24,18 +25,25 @@ sizeL :: Lens' (SDL.Rectangle a) (Vect.V2 a)
 sizeL = lens (\(SDL.Rectangle _ size) -> size)
              (\(SDL.Rectangle center _) size' -> SDL.Rectangle center size')
 
-newtype Figure m = Figure {
-  getFigure :: forall r. Vect.V4 Word8 -> (SDL.Texture -> SDL.Rectangle CInt -> SDL.Rectangle CInt -> m r) -> m r
-}
+newtype Figure = Figure { getFigure :: forall env m r. (MonadIO m, MonadMask m, HasLightEnv env) => Vect.V4 Word8 -> (SDL.Texture -> SDL.Rectangle CInt -> SDL.Rectangle CInt -> LightT env m r) -> LightT env m r }
 
-getTexture :: MonadIO m => Figure m -> m (SDL.Texture)
+getTexture
+  :: (HasLightEnv env, MonadIO m, MonadMask m)
+  => Figure
+  -> LightT env m (SDL.Texture)
 getTexture fig = getFigure fig 0 (\x _ _ -> return x)
 
-getFigureSize :: MonadIO m => Figure m -> m (Vect.V2 CInt)
+getFigureSize
+  :: (HasLightEnv env, MonadIO m, MonadMask m)
+  => Figure
+  -> LightT env m (Vect.V2 CInt)
 getFigureSize fig =
   getFigure fig 0 (\_ (SDL.Rectangle _ size) _ -> return size)
 
-getFigureArea :: MonadIO m => Figure m -> m (SDL.Rectangle Int)
+getFigureArea
+  :: (HasLightEnv env, MonadIO m, MonadMask m)
+  => Figure
+  -> LightT env m (SDL.Rectangle Int)
 getFigureArea fig = fmap (fmap fromEnum) $ getFigure fig 0 (\_ r _ -> return r)
 
 union :: SDL.Rectangle Int -> SDL.Rectangle Int -> SDL.Rectangle Int
@@ -44,15 +52,14 @@ union x@(SDL.Rectangle (SDL.P c1) s1) y@(SDL.Rectangle (SDL.P c2) s2)
                             (c2 - c1 + fmap (`div` 2) (s1 + s2))
   | otherwise = union y x
 
-fromTexture :: MonadIO m => SDL.Texture -> m (Figure m)
+fromTexture :: MonadIO m => SDL.Texture -> m Figure
 fromTexture tex = do
   tinfo <- SDL.queryTexture tex
   let size = Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo)
   return $ Figure $ \_ k -> do
     k tex (SDL.Rectangle 0 size) (SDL.Rectangle 0 size)
 
-render
-  :: (HasLightEnv env, MonadIO m) => Figure (LightT env m) -> LightT env m ()
+render :: (HasLightEnv env, MonadIO m, MonadMask m) => Figure -> LightT env m ()
 render fig = do
   renderer <- view rendererL
 
@@ -64,7 +71,7 @@ render fig = do
   SDL.copy renderer texture (Just srcArea) (Just tgtArea)
 
 renders
-  :: (HasLightEnv env, MonadIO m) => [Figure (LightT env m)] -> LightT env m ()
+  :: (HasLightEnv env, MonadIO m, MonadMask m) => [Figure] -> LightT env m ()
 renders = mapM_ render
 
 withBlendedText
@@ -85,18 +92,18 @@ class Rendering r where
   text :: SDL.Font.Font -> T.Text -> r
   picture :: FilePath -> r
 
-instance Rendering (Figure MiniLight) where
-  translate v fig =
+instance Rendering Figure where
+  translate v (Figure fig) =
     let cv = fmap toEnum v in
-    Figure $ \color k -> getFigure fig color (\tex srcArea tgtArea -> k tex srcArea (centerL +~ cv $ tgtArea))
+    Figure $ \color k -> fig color (\tex srcArea tgtArea -> k tex srcArea (centerL +~ cv $ tgtArea))
 
-  colorize color fig = Figure $ \_ -> getFigure fig color
+  colorize color (Figure fig) = Figure $ \_ -> fig color
 
   -- srcArea and tgtArea should be the same size
-  clip (SDL.Rectangle (SDL.P point') size') fig = Figure $ \color k -> do
-    tex <- getFigure fig color (\x _ _ -> return x)
-    srcArea <- getFigure fig color (\_ y _ -> return y)
-    tgtArea <- getFigure fig color (\_ _ y -> return y)
+  clip (SDL.Rectangle (SDL.P point') size') (Figure fig) = Figure $ \color k -> do
+    tex <- fig color (\x _ _ -> return x)
+    srcArea <- fig color (\_ y _ -> return y)
+    tgtArea <- fig color (\_ _ y -> return y)
 
     let SDL.Rectangle (SDL.P point) _ = srcArea
     let newSrcArea = (SDL.Rectangle (SDL.P $ point + fmap toEnum point') (fmap toEnum size'))

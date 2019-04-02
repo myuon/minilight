@@ -19,7 +19,7 @@ data MessageEngine = MessageEngine {
   counter :: Int,
   message :: T.Text,
   rendered :: Int,
-  textTexture :: Figure MiniLight,
+  textTexture :: Figure,
   layer :: CLayer.Layer,
   cursor :: CAnim.AnimationLayer,
   config :: Config

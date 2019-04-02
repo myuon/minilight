@@ -12,7 +12,7 @@ import qualified SDL
 import qualified SDL.Vect as Vect
 
 data Layer = Layer {
-  layer :: Figure MiniLight
+  layer :: Figure
 }
 
 instance ComponentUnit Layer where

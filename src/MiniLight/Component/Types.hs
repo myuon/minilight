@@ -10,7 +10,7 @@ class ComponentUnit c where
   update :: (HasLightEnv env, MonadIO m) => c -> LightT env m c
   update = return
 
-  figures :: (HasLightEnv env, MonadIO m) => c -> LightT env m [Figure MiniLight]
+  figures :: (HasLightEnv env, MonadIO m) => c -> LightT env m [Figure]
 
   draw :: (HasLightEnv env, MonadIO m) => c -> LightT env m ()
   draw comp = liftMiniLight . renders =<< figures comp
