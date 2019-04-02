@@ -45,7 +45,7 @@ instance ComponentUnit MessageEngine where
     baseLayer <- figures $ layer comp
     cursorLayer <- figures $ cursor comp
     cursorLayerSize <- return $ Vect.V2 0 0
---    liftIO . print =<< (fmap (^. sizeL) $ liftMiniLight $ getComponentSize $ cursor comp)
+    liftIO . print =<< (fmap (^. sizeL) $ getComponentSize $ cursor comp)
     (w, h) <- SDL.Font.size (font comp) (T.take (rendered comp) $ message comp)
     let windowSize = size $ config comp
 
