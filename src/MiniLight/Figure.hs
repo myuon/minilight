@@ -38,18 +38,18 @@ getFigureSize
   => Figure
   -> LightT env m (Vect.V2 CInt)
 getFigureSize fig =
-  getFigure fig 0 (\_ (SDL.Rectangle _ size) _ -> return size)
+  getFigure fig 0 (\_ _ (SDL.Rectangle _ size) -> return size)
 
 getFigureArea
   :: (HasLightEnv env, MonadIO m, MonadMask m)
   => Figure
   -> LightT env m (SDL.Rectangle Int)
-getFigureArea fig = fmap (fmap fromEnum) $ getFigure fig 0 (\_ r _ -> return r)
+getFigureArea fig = fmap (fmap fromEnum) $ getFigure fig 0 (\_ _ r -> return r)
 
 union :: SDL.Rectangle Int -> SDL.Rectangle Int -> SDL.Rectangle Int
 union x@(SDL.Rectangle (SDL.P c1) s1) y@(SDL.Rectangle (SDL.P c2) s2)
-  | c1 < c2 = SDL.Rectangle (SDL.P (fmap (2 *) c1 - s1 + fmap (2 *) c2 + s2))
-                            (c2 - c1 + fmap (`div` 2) (s1 + s2))
+  | c1 <= c2 = SDL.Rectangle (SDL.P (fmap (2 *) c1 - s1 + fmap (2 *) c2 + s2))
+                             (c2 - c1 + fmap (`div` 2) (s1 + s2))
   | otherwise = union y x
 
 fromTexture :: MonadIO m => SDL.Texture -> m Figure
