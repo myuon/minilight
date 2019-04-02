@@ -20,6 +20,10 @@ centerL = lens
   (\(SDL.Rectangle (SDL.P center) _) -> center)
   (\(SDL.Rectangle _ size) center' -> SDL.Rectangle (SDL.P center') size)
 
+sizeL :: Lens' (SDL.Rectangle a) (Vect.V2 a)
+sizeL = lens (\(SDL.Rectangle _ size) -> size)
+             (\(SDL.Rectangle center _) size' -> SDL.Rectangle center size')
+
 newtype Figure m = Figure {
   getFigure :: forall r. Vect.V4 Word8 -> (SDL.Texture -> SDL.Rectangle CInt -> SDL.Rectangle CInt -> m r) -> m r
 }
@@ -27,9 +31,18 @@ newtype Figure m = Figure {
 getTexture :: MonadIO m => Figure m -> m (SDL.Texture)
 getTexture fig = getFigure fig 0 (\x _ _ -> return x)
 
-getTextureSize :: MonadIO m => Figure m -> m (Vect.V2 CInt)
-getTextureSize fig =
+getFigureSize :: MonadIO m => Figure m -> m (Vect.V2 CInt)
+getFigureSize fig =
   getFigure fig 0 (\_ (SDL.Rectangle _ size) _ -> return size)
+
+getFigureArea :: MonadIO m => Figure m -> m (SDL.Rectangle Int)
+getFigureArea fig = fmap (fmap fromEnum) $ getFigure fig 0 (\_ r _ -> return r)
+
+union :: SDL.Rectangle Int -> SDL.Rectangle Int -> SDL.Rectangle Int
+union x@(SDL.Rectangle (SDL.P c1) s1) y@(SDL.Rectangle (SDL.P c2) s2)
+  | c1 < c2 = SDL.Rectangle (SDL.P (fmap (2 *) c1 - s1 + fmap (2 *) c2 + s2))
+                            (c2 - c1 + fmap (`div` 2) (s1 + s2))
+  | otherwise = union y x
 
 fromTexture :: MonadIO m => SDL.Texture -> m (Figure m)
 fromTexture tex = do

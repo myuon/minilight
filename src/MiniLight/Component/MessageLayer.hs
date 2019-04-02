@@ -4,6 +4,7 @@ import Control.Monad.State
 import qualified Data.Text as T
 import Lens.Micro
 import Lens.Micro.Mtl
+import Linear
 import MiniLight.Component.Types
 import qualified MiniLight.Component.Layer as CLayer
 import qualified MiniLight.Component.AnimationLayer as CAnim
@@ -40,14 +41,18 @@ instance ComponentUnit MessageEngine where
       c <- use id
       id <~ lift (update c)
 
-  draw comp = do
-    draw $ layer comp
-
+  figures comp = do
+    baseLayer <- figures $ layer comp
+    cursorLayer <- figures $ cursor comp
+    cursorLayerSize <- return $ Vect.V2 0 0
+--    liftIO . print =<< (fmap (^. sizeL) $ liftMiniLight $ getComponentSize $ cursor comp)
     (w, h) <- SDL.Font.size (font comp) (T.take (rendered comp) $ message comp)
-    liftMiniLight
-      $ renders [colorize (Vect.V4 0 0 0 255) $ clip (SDL.Rectangle 0 (Vect.V2 w h)) $ textTexture comp]
+    let windowSize = size $ config comp
 
-    draw $ cursor comp
+    return
+      $ baseLayer
+      ++ [ translate (Vect.V2 20 10) $ colorize (Vect.V4 255 255 255 255) $ clip (SDL.Rectangle 0 (Vect.V2 w h)) $ textTexture comp ]
+      ++ map (translate (Vect.V2 ((windowSize ^. _x - cursorLayerSize ^. _x) `div` 2) (windowSize ^. _y - cursorLayerSize ^. _y))) cursorLayer
 
 data Config = Config {
   size :: Vect.V2 Int,

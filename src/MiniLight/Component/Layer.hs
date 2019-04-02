@@ -16,7 +16,7 @@ data Layer = Layer {
 }
 
 instance ComponentUnit Layer where
-  draw comp = liftMiniLight $ render $ layer comp
+  figures comp = return [layer comp]
 
 new :: FilePath -> MiniLight Layer
 new path = do
@@ -26,7 +26,7 @@ newNineTile :: FilePath -> Vect.V2 CInt -> MiniLight Layer
 newNineTile path size = do
   let pic = picture path
   tex      <- getTexture pic
-  texSize  <- getTextureSize pic
+  texSize  <- getFigureSize pic
   tinfo    <- SDL.queryTexture tex
   renderer <- view rendererL
 

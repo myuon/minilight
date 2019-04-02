@@ -23,16 +23,17 @@ instance ComponentUnit AnimationLayer where
     modify $ \c -> c { counter = (counter c + 1) }
     modify $ \c -> c { counter = if counter c >= (division c ^._x * division c ^. _y) * scaler c then 0 else counter c }
 
-  draw comp = do
+  figures comp = do
     let iv = V2 ((counter comp `div` scaler comp) `mod` division comp ^. _x) ((counter comp `div` scaler comp) `div` division comp ^. _x)
     let tileSize = div <$> textureSize comp <*> division comp
-
-    liftMiniLight $ render $ clip (SDL.Rectangle (SDL.P (tileSize * iv)) tileSize) $ L.layer $ layer comp
+    return [
+      clip (SDL.Rectangle (SDL.P (tileSize * iv)) tileSize) $ L.layer $ layer comp
+      ]
 
 new :: FilePath -> Vect.V2 Int -> MiniLight AnimationLayer
 new path division = do
   layer <- L.new path
-  size  <- getTextureSize (L.layer layer)
+  size  <- getFigureSize (L.layer layer)
 
   return $ AnimationLayer
     { layer       = layer
