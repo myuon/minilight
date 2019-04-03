@@ -42,7 +42,7 @@ instance ComponentUnit MessageEngine where
       c <- use id
       id <~ lift (update c)
 
-  figures comp = do
+  figures comp = fmap (map (translate $ position $ config comp)) $ do
     baseLayer <- figures $ layer comp
     cursorLayer <- figures $ cursor comp
     cursorLayerSize <- fmap (^. sizeL) $ getComponentSize $ cursor comp
@@ -56,6 +56,7 @@ instance ComponentUnit MessageEngine where
 
 data Config = Config {
   size :: Vect.V2 Int,
+  position :: Vect.V2 Int,
   layerImage :: FilePath,
   waitingImage :: FilePath,
   waitingImageDivision :: Vect.V2 Int,
@@ -65,10 +66,11 @@ data Config = Config {
 instance FromJSON Config where
   parseJSON = withObject "config" $ \v -> do
     windowJSON <- v .: "window"
-    (size, layerImage) <- flip (withObject "window") windowJSON $ \v -> do
+    (size, position, layerImage) <- flip (withObject "window") windowJSON $ \v -> do
       size <- withObject "size" (\v -> Vect.V2 <$> v .: "width" <*> v .: "height") =<< v .: "size"
+      position <- withObject "position" (\v -> Vect.V2 <$> v .: "x" <*> v .: "y") =<< v .: "position"
       layerImage <- v .: "image"
-      return (size, layerImage)
+      return (size, position, layerImage)
 
     nextJSON <- v .: "next"
     (waitingImage, waitingImageDivision) <- flip (withObject "image") nextJSON $ \v -> do
@@ -78,7 +80,7 @@ instance FromJSON Config where
 
     messages <- v .: "messages"
 
-    return $ Config size layerImage waitingImage waitingImageDivision messages
+    return $ Config size position layerImage waitingImage waitingImageDivision messages
 
 new :: SDL.Font.Font -> Config -> MiniLight MessageEngine
 new font conf = do
