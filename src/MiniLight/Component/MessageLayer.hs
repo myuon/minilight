@@ -1,6 +1,7 @@
 module MiniLight.Component.MessageLayer where
 
 import Control.Monad.State
+import Data.Aeson
 import qualified Data.Text as T
 import Lens.Micro
 import Lens.Micro.Mtl
@@ -57,20 +58,39 @@ data Config = Config {
   size :: Vect.V2 Int,
   layerImage :: FilePath,
   waitingImage :: FilePath,
-  waitingImageDivision :: Vect.V2 Int
+  waitingImageDivision :: Vect.V2 Int,
+  messages :: T.Text
 }
 
-new :: SDL.Font.Font -> T.Text -> Config -> MiniLight MessageEngine
-new font message conf = do
+instance FromJSON Config where
+  parseJSON = withObject "config" $ \v -> do
+    windowJSON <- v .: "window"
+    (size, layerImage) <- flip (withObject "window") windowJSON $ \v -> do
+      size <- withObject "size" (\v -> Vect.V2 <$> v .: "width" <*> v .: "height") =<< v .: "size"
+      layerImage <- v .: "image"
+      return (size, layerImage)
+
+    nextJSON <- v .: "next"
+    (waitingImage, waitingImageDivision) <- flip (withObject "image") nextJSON $ \v -> do
+      waitingImage <- v .: "image"
+      division <- (\v -> Vect.V2 <$> v .: "x" <*> v .: "y") =<< v .: "division"
+      return (waitingImage, division)
+
+    messages <- v .: "messages"
+
+    return $ Config size layerImage waitingImage waitingImageDivision messages
+
+new :: SDL.Font.Font -> Config -> MiniLight MessageEngine
+new font conf = do
   layer  <- CLayer.newNineTile (layerImage conf) (fmap toEnum $ size conf)
   cursor <- CAnim.new (waitingImage conf) (waitingImageDivision conf)
 
   return $ MessageEngine
     { font        = font
     , counter     = 0
-    , message     = message
+    , message     = messages conf
     , rendered    = 0
-    , textTexture = text font message
+    , textTexture = text font $ messages conf
     , layer       = layer
     , cursor      = cursor
     , config      = conf
