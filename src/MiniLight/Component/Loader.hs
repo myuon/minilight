@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 module MiniLight.Component.Loader where
 
 import Control.Applicative
@@ -93,6 +95,9 @@ normalize path1 ts = V.toList path1' ++ dropWhile (\v -> v == Right "") ts
   depth  = length $ takeWhile (\v -> v == Right "") ts
   path1' = V.take (V.length path1 - depth - 1) path1
 
+pattern Arithmetic op n1 n2 =
+  Op op (Constant (Number n1)) (Constant (Number n2))
+
 eval :: Context -> Expr -> Value
 eval ctx = go
  where
@@ -101,6 +106,12 @@ eval ctx = go
     getAt (target ctx) (normalize (path ctx) (convertPath path'))
   go (Var path') =
     getAt (Object (variables ctx)) (normalize V.empty (convertPath path'))
+  go (binds -> Arithmetic "+" n1 n2) = Number (n1+n2)
+  go (binds -> Arithmetic "-" n1 n2) = Number (n1-n2)
+  go (binds -> Arithmetic "*" n1 n2) = Number (n1*n2)
+  go (binds -> Arithmetic "/" n1 n2) = Number (n1/n2)
+
+  binds (Op op e1 e2) = Op op (Constant (eval ctx e1)) (Constant (eval ctx e2))
 
 convertPath :: T.Text -> [Either Int T.Text]
 convertPath

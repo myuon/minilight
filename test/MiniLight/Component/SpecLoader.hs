@@ -106,7 +106,7 @@ spec_resolver = do
           w: 100
         root:
           h: 200
-          ar: ${var:w} / ${ref:h}
+          ar: "{${var:w} / ${ref:h}}"
       |]
       let expected = [yamlQQ|
         root:
