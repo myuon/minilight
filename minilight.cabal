@@ -41,6 +41,9 @@ library
     sdl2-ttf,
     sdl2-image,
     text,
+    trifecta,
+    unordered-containers,
+    vector,
     yaml
   hs-source-dirs:      src
   default-language:    Haskell2010
@@ -49,4 +52,18 @@ library
     FlexibleInstances
     OverloadedStrings
     MultiParamTypeClasses
-  ghc-options: -threaded -O2 -Wall -Wno-name-shadowing
+  ghc-options: -O2 -Wall -Wno-name-shadowing
+
+test-suite tests
+  type: exitcode-stdio-1.0
+  main-is: Driver.hs
+  build-tool-depends:
+    tasty-discover:tasty-discover >= 4.2 && < 4.3,
+  build-depends:
+    base,
+    minilight,
+    tasty,
+    tasty-hspec,
+    trifecta,
+  hs-source-dirs:      test
+  default-language:    Haskell2010
