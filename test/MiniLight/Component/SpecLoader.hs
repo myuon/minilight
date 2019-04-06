@@ -1,7 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 module MiniLight.Component.SpecLoader where
 
 import Data.Aeson hiding (Success, Failure)
+import Data.Yaml.TH
 import MiniLight.Component.Loader
 import Test.Tasty.Hspec hiding (Failure, Success)
 import Text.Trifecta
@@ -40,3 +42,48 @@ spec_parser = do
           )
           (Constant (Number 100))
         Failure err -> expectationFailure $ show err
+
+spec_resolver :: Spec
+spec_resolver = do
+  describe "Resolver" $ do
+    it "resolves a reference, in the same path" $ do
+      let plain = [yamlQQ|
+        root:
+          a: ${ref:b}
+          b: 100
+      |]
+      let expected = [yamlQQ|
+        root:
+          a: 100
+          b: 100
+      |]
+
+      resolve plain `shouldBe` expected
+    it "resolves a reference, in the same path with period" $ do
+      let plain = [yamlQQ|
+        root:
+          a: ${ref:.b}
+          b: 100
+      |]
+      let expected = [yamlQQ|
+        root:
+          a: 100
+          b: 100
+      |]
+
+      resolve plain `shouldBe` expected
+    it "resolves a reference, in the parent path" $ do
+      let plain = [yamlQQ|
+        root:
+          child:
+            here: ${ref:..target}
+          target: 100
+      |]
+      let expected = [yamlQQ|
+        root:
+          child:
+            here: 100
+          target: 100
+      |]
+
+      resolve plain `shouldBe` expected
