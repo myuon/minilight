@@ -37,6 +37,7 @@ library
     mtl,
     microlens,
     microlens-mtl,
+    scientific,
     sdl2,
     sdl2-ttf,
     sdl2-image,
@@ -60,6 +61,7 @@ test-suite tests
   build-tool-depends:
     tasty-discover:tasty-discover >= 4.2 && < 4.3,
   build-depends:
+    aeson,
     base,
     minilight,
     tasty,

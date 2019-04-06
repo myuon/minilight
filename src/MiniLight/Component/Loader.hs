@@ -1,11 +1,13 @@
 {-# LANGUAGE DeriveGeneric #-}
 module MiniLight.Component.Loader where
 
+import Control.Applicative
 import Control.Monad.IO.Class
 import Data.Aeson
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import Data.Scientific (fromFloatDigits)
 import Data.Yaml (decodeFileEither)
 import GHC.Generics
 import MiniLight.Light
@@ -34,12 +36,38 @@ loadAppConfig path mapper = do
   mapM (\conf -> mapper (name conf) (properties conf)) (app conf)
 
 data Expr
-  = Ref T.Text  -- ^ reference syntax: ${ref:...}
+  = None
+  | Ref T.Text  -- ^ reference syntax: ${ref:...}
   | Var T.Text  -- ^ variable syntax: ${var:...}
-  | Op T.Text Expr Expr
+  | Op T.Text Expr Expr  -- ^ expr operator: +, -, *, /
+  | Constant Value  -- ^ constants (string or number or null)
+  deriving (Eq, Show)
 
 parser :: Parser Expr
-parser = undefined
+parser = braces (number <|> expr) <|> try reference <|> try variable
+ where
+  expr      = chainl expr1 op1 None
+  expr1     = chainl expr2 op2 None
+  expr2     = parens expr <|> try reference <|> try variable <|> try number
+
+  -- low precedence infixl operator group
+  op1       = Op "+" <$ symbol "+" <|> Op "-" <$ symbol "-"
+
+  -- high precedence infixl operator group
+  op2       = Op "*" <$ symbol "*" <|> Op "/" <$ symbol "/"
+
+  reference = do
+    char '$'
+    braces
+      $  string "ref:"
+      *> (fmap (Ref . T.pack) (many (letter <|> oneOf ".")))
+  variable = do
+    char '$'
+    braces
+      $  string "var:"
+      *> (fmap (Var . T.pack) (many (letter <|> oneOf ".")))
+  number = fmap (Constant . Number . either fromIntegral fromFloatDigits)
+                integerOrDouble
 
 resolve :: Value -> Value
 resolve = go []
