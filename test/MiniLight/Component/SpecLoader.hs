@@ -30,7 +30,7 @@ spec_parser = do
       case parseString parser mempty "{-0.999}" of
         Success e   -> e `shouldBe` Constant (Number (-0.999))
         Failure err -> expectationFailure $ show err
-    it "parses a operator" $ do
+    it "parses a complex expression" $ do
       case parseString parser mempty "{${ref:hoge} + 200 * 10 - 100}" of
         Success e -> e `shouldBe` Op
           "-"

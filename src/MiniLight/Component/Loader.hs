@@ -51,21 +51,17 @@ parser = braces (number <|> expr) <|> try reference <|> try variable
   expr2     = parens expr <|> try reference <|> try variable <|> try number
 
   -- low precedence infixl operator group
-  op1       = Op "+" <$ symbol "+" <|> Op "-" <$ symbol "-"
+  op1       = Op "+" <$ textSymbol "+" <|> Op "-" <$ textSymbol "-"
 
   -- high precedence infixl operator group
-  op2       = Op "*" <$ symbol "*" <|> Op "/" <$ symbol "/"
+  op2       = Op "*" <$ textSymbol "*" <|> Op "/" <$ textSymbol "/"
 
   reference = do
     char '$'
-    braces
-      $  string "ref:"
-      *> (fmap (Ref . T.pack) (many (letter <|> oneOf ".")))
+    braces $ text "ref:" *> (fmap (Ref . T.pack) (many (letter <|> oneOf ".")))
   variable = do
     char '$'
-    braces
-      $  string "var:"
-      *> (fmap (Var . T.pack) (many (letter <|> oneOf ".")))
+    braces $ text "var:" *> (fmap (Var . T.pack) (many (letter <|> oneOf ".")))
   number = fmap (Constant . Number . either fromIntegral fromFloatDigits)
                 integerOrDouble
 
