@@ -10,7 +10,7 @@ import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Vector as V
-import Data.Scientific (fromFloatDigits)
+import Data.Scientific (Scientific, fromFloatDigits)
 import Data.Yaml (decodeFileEither)
 import GHC.Generics
 import MiniLight.Light
@@ -47,7 +47,7 @@ data Expr
   deriving (Eq, Show)
 
 parser :: Parser Expr
-parser = braces (number <|> expr) <|> try reference <|> try variable
+parser = try reference <|> try variable <|> (char '$' *> braces (number <|> expr))
  where
   expr      = chainl expr1 op1 None
   expr1     = chainl expr2 op2 None
@@ -95,6 +95,7 @@ normalize path1 ts = V.toList path1' ++ dropWhile (\v -> v == Right "") ts
   depth  = length $ takeWhile (\v -> v == Right "") ts
   path1' = V.take (V.length path1 - depth - 1) path1
 
+pattern Arithmetic :: T.Text -> Scientific -> Scientific -> Expr
 pattern Arithmetic op n1 n2 =
   Op op (Constant (Number n1)) (Constant (Number n2))
 
@@ -110,8 +111,10 @@ eval ctx = go
   go (binds -> Arithmetic "-" n1 n2) = Number (n1-n2)
   go (binds -> Arithmetic "*" n1 n2) = Number (n1*n2)
   go (binds -> Arithmetic "/" n1 n2) = Number (n1/n2)
+  go expr = error $ "Illegal expression: " ++ show expr
 
   binds (Op op e1 e2) = Op op (Constant (eval ctx e1)) (Constant (eval ctx e2))
+  binds _ = undefined
 
 convertPath :: T.Text -> [Either Int T.Text]
 convertPath
@@ -148,6 +151,6 @@ resolve = \value -> go (Context V.empty HM.empty value) value
   go ctx (Array arr) =
     Array $ V.imap (\i -> go (ctx { path = V.snoc (path ctx) (Left i) })) arr
   go ctx (String t) = convert ctx t
-  go ctx (Number n) = Number n
-  go ctx (Bool   b) = Bool b
-  go ctx Null       = Null
+  go _ (Number n) = Number n
+  go _ (Bool   b) = Bool b
+  go _ Null       = Null

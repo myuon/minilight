@@ -1,6 +1,6 @@
 module MiniLight.Component (
   module MiniLight.Component.Types,
-  module MiniLight.Component.Loader
+  loadAppConfig
 ) where
 
 import MiniLight.Component.Types

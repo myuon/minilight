@@ -25,15 +25,15 @@ spec_parser = do
         Success e   -> e `shouldBe` Var "baz.quux"
         Failure err -> expectationFailure $ show err
     it "parses an integer" $ do
-      case parseString parser mempty "{100}" of
+      case parseString parser mempty "${100}" of
         Success e   -> e `shouldBe` Constant (Number 100)
         Failure err -> expectationFailure $ show err
     it "parses a double" $ do
-      case parseString parser mempty "{-0.999}" of
+      case parseString parser mempty "${-0.999}" of
         Success e   -> e `shouldBe` Constant (Number (-0.999))
         Failure err -> expectationFailure $ show err
     it "parses a complex expression" $ do
-      case parseString parser mempty "{${ref:hoge} + 200 * 10 - 100}" of
+      case parseString parser mempty "${${ref:hoge} + 200 * 10 - 100}" of
         Success e -> e `shouldBe` Op
           "-"
           ( Op "+"
@@ -106,12 +106,27 @@ spec_resolver = do
           w: 100
         root:
           h: 200
-          ar: "{${var:w} / ${ref:h}}"
+          ar: ${${var:w} / ${ref:h}}
       |]
       let expected = [yamlQQ|
         root:
           h: 200
           ar: 0.5
+      |]
+
+      resolve plain `shouldBe` expected
+    it "resolves a nested variable" $ do
+      let plain = [yamlQQ|
+        _vars:
+          nested:
+            a: 100
+            b: 200
+        root:
+          c: ${${var:nested.a} + ${var:nested.b}}
+      |]
+      let expected = [yamlQQ|
+        root:
+          c: 300
       |]
 
       resolve plain `shouldBe` expected
