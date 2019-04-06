@@ -87,3 +87,31 @@ spec_resolver = do
       |]
 
       resolve plain `shouldBe` expected
+    it "resolves a variable" $ do
+      let plain = [yamlQQ|
+        root:
+          _vars:
+            x: 100
+          target: ${var:x}
+      |]
+      let expected = [yamlQQ|
+        root:
+          target: 100
+      |]
+
+      resolve plain `shouldBe` expected
+    it "resolves a complex expression" $ do
+      let plain = [yamlQQ|
+        _vars:
+          w: 100
+        root:
+          h: 200
+          ar: ${var:w} / ${ref:h}
+      |]
+      let expected = [yamlQQ|
+        root:
+          h: 200
+          ar: 0.5
+      |]
+
+      resolve plain `shouldBe` expected

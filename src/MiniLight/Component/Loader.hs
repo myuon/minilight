@@ -100,7 +100,7 @@ eval ctx = go
   go (Ref path') =
     getAt (target ctx) (normalize (path ctx) (convertPath path'))
   go (Var path') =
-    getAt (Object (variables ctx)) (normalize (path ctx) (convertPath path'))
+    getAt (Object (variables ctx)) (normalize V.empty (convertPath path'))
 
 convertPath :: T.Text -> [Either Int T.Text]
 convertPath
