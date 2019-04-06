@@ -130,3 +130,18 @@ spec_resolver = do
       |]
 
       resolve plain `shouldBe` expected
+    it "resolves a minus expression" $ do
+      let plain = [yamlQQ|
+        _vars:
+          nested:
+            a: 200
+            b: 150
+        root:
+          c: ${${var:nested.a} - ${var:nested.b}}
+      |]
+      let expected = [yamlQQ|
+        root:
+          c: 50
+      |]
+
+      resolve plain `shouldBe` expected

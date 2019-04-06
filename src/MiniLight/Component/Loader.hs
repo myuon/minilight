@@ -5,7 +5,7 @@ module MiniLight.Component.Loader where
 
 import Control.Applicative
 import Control.Monad.IO.Class
-import Data.Aeson hiding (Result(..))
+import Data.Aeson hiding (Result)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
@@ -35,8 +35,8 @@ loadAppConfig
   -> (T.Text -> Value -> MiniLight Component)
   -> MiniLight [Component]
 loadAppConfig path mapper = do
-  conf <- liftIO $ either (error . show) id <$> decodeFileEither path
-  mapM (\conf -> mapper (name conf) (properties conf)) (app conf)
+  conf <- liftIO $ (\(Data.Aeson.Success a) -> a) . fromJSON . resolve . either (error . show) id <$> decodeFileEither path
+  mapM (\conf -> mapper (name conf) (resolve $ properties conf)) (app conf)
 
 data Expr
   = None
@@ -127,7 +127,7 @@ convertPath
   where index = char '[' *> natural <* char ']'
 
 convert :: Context -> T.Text -> Value
-convert ctx = foldResult (error . show) (eval ctx) . parseText parser
+convert ctx t = foldResult (\_ -> String t) (eval ctx) $ parseText parser t
 
 parseText :: Parser a -> T.Text -> Result a
 parseText parser = parseByteString parser mempty . TE.encodeUtf8
