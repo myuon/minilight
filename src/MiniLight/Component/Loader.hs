@@ -3,9 +3,10 @@ module MiniLight.Component.Loader where
 
 import Control.Applicative
 import Control.Monad.IO.Class
-import Data.Aeson
+import Data.Aeson hiding (Result(..))
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
 import qualified Data.Vector as V
 import Data.Scientific (fromFloatDigits)
 import Data.Yaml (decodeFileEither)
@@ -65,12 +66,73 @@ parser = braces (number <|> expr) <|> try reference <|> try variable
   number = fmap (Constant . Number . either fromIntegral fromFloatDigits)
                 integerOrDouble
 
-resolve :: Value -> Value
-resolve = go []
+data Context = Context {
+  path :: V.Vector (Either Int T.Text),
+  variables :: Object
+}
+
+getAt :: Value -> [Either Int T.Text] -> Value
+getAt = go
  where
-  go path (Object obj) = Object $ HM.mapWithKey (\key -> go (key : path)) obj
-  go path (Array  arr) = Array $ V.imap (\i -> go (T.pack (show i) : path)) arr
-  go path (String t  ) = String t
-  go path (Number n  ) = Number n
-  go path (Bool   b  ) = Bool b
-  go path Null         = Null
+  go value        []             = value
+  go (Object obj) (Right key:ps) = go (obj HM.! key) ps
+  go (Array  arr) (Left  i  :ps) = go (arr V.! i) ps
+  go v (p:_) =
+    error
+      $  "TypeError: path `"
+      <> show p
+      <> "` is missing in `"
+      <> show v
+      <> "`"
+
+normalize
+  :: V.Vector (Either Int T.Text) -> [Either Int T.Text] -> [Either Int T.Text]
+normalize path1 ts = V.toList path1' ++ ts
+ where
+  depth  = length $ takeWhile (\v -> v == Right "") ts
+  path1' = V.take (V.length path1 - depth) path1
+
+eval :: Context -> Expr -> Value
+eval ctx = go
+ where
+  go None = ""
+  go (Ref path') =
+    getAt (Object (variables ctx)) (normalize (path ctx) (convertPath path'))
+
+convertPath :: T.Text -> [Either Int T.Text]
+convertPath
+  = map
+      ( \t ->
+        foldResult (\_ -> Right t) (Left . fromIntegral) $ parseText index t
+      )
+    . T.splitOn "."
+  where index = char '[' *> natural <* char ']'
+
+convert :: Context -> T.Text -> Value
+convert ctx = foldResult (error . show) (eval ctx) . parseText parser
+
+parseText :: Parser a -> T.Text -> Result a
+parseText parser = parseByteString parser mempty . TE.encodeUtf8
+
+resolve :: Value -> Value
+resolve = go (Context V.empty HM.empty)
+ where
+  go ctx (Object obj)
+    | "_vars" `HM.member` obj
+    = let vars = obj HM.! "_vars"
+      in  go
+            ( ctx
+              { variables = HM.union ((\(Object o) -> o) $ vars) (variables ctx)
+              }
+            )
+            (Object (HM.delete "_vars" obj))
+    | otherwise
+    = Object $ HM.mapWithKey
+      (\key -> go (ctx { path = V.snoc (path ctx) (Right key) }))
+      obj
+  go ctx (Array arr) =
+    Array $ V.imap (\i -> go (ctx { path = V.snoc (path ctx) (Left i) })) arr
+  go ctx (String t) = convert ctx t
+  go ctx (Number n) = Number n
+  go ctx (Bool   b) = Bool b
+  go ctx Null       = Null
