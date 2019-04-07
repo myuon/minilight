@@ -30,10 +30,8 @@ defResolver name props = case name of
     Component <$> Layer.newNineTile (foldResult error id $ Aeson.fromJSON props)
   "animation-layer" -> Component
     <$> AnimationLayer.new (foldResult error id $ Aeson.fromJSON props)
-  "message-engine" -> Component <$> MessageEngine.new
-    undefined
-    (foldResult error id $ Aeson.fromJSON props)
-  "message-layer" -> Component <$> MessageEngine.new
-    undefined
-    (foldResult error id $ Aeson.fromJSON props)
+  "message-engine" ->
+    Component <$> MessageEngine.new (foldResult error id $ Aeson.fromJSON props)
+  "message-layer" ->
+    Component <$> MessageEngine.new (foldResult error id $ Aeson.fromJSON props)
   _ -> error $ T.unpack $ "Component not defined: `" <> name <> "`"

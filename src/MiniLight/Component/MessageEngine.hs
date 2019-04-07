@@ -46,7 +46,9 @@ instance ComponentUnit MessageEngine where
 data Config = Config {
   messages :: T.Text,
   static :: Bool,
-  color :: Vect.V4 Word8
+  color :: Vect.V4 Word8,
+  fontConf :: FontDescriptor,
+  fontSize :: Int
 }
 
 instance FromJSON Config where
@@ -54,11 +56,20 @@ instance FromJSON Config where
     messages <- v .: "messages"
     static <- v .:? "static" .!= False
     [r,g,b,a] <- v .: "color" .!= [255, 255, 255, 255]
+    (fontConf, size) <- (v .: "font" >>=) $ withObject "font" $ \v -> do
+      family <- v .: "family"
+      size <- v .: "size"
+      bold <- v .:? "bold" .!= False
+      italic <- v .:? "italic" .!= False
 
-    return $ Config messages static (Vect.V4 r g b a)
+      return $ (FontDescriptor family (FontStyle bold italic), size)
 
-new :: SDL.Font.Font -> Config -> MiniLight MessageEngine
-new font conf = do
+    return $ Config messages static (Vect.V4 r g b a) fontConf size
+
+new :: Config -> MiniLight MessageEngine
+new conf = do
+  font <- loadFont (fontConf conf) (fontSize conf)
+
   return $ MessageEngine
     { font        = font
     , counter     = 0

@@ -9,6 +9,7 @@ module MiniLight.Light (
   transEnvLightT,
 
   FontDescriptor(..),
+  FontStyle(..),
   loadFontCache,
   loadFont,
   withFont

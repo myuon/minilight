@@ -11,7 +11,6 @@ import qualified MiniLight.Component.AnimationLayer as CAnim
 import qualified MiniLight.Component.MessageEngine as CME
 import MiniLight.Figure
 import MiniLight.Light
-import qualified SDL.Font
 import qualified SDL.Vect as Vect
 
 data MessageLayer = MessageLayer {
@@ -67,9 +66,9 @@ instance FromJSON Config where
 
     return $ Config position messageEngineConf layerConf nextConf
 
-new :: SDL.Font.Font -> Config -> MiniLight MessageLayer
-new font conf = do
-  engine <- CME.new font (messageEngineConf conf)
+new :: Config -> MiniLight MessageLayer
+new conf = do
+  engine <- CME.new (messageEngineConf conf)
   layer  <- CLayer.newNineTile (layerConf conf)
   cursor <- CAnim.new (nextConf conf)
 
