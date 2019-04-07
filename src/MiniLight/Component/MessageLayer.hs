@@ -39,15 +39,15 @@ instance ComponentUnit MessageLayer where
   figures comp = do
     baseLayer <- figures $ layer comp
     cursorLayer <- figures $ cursor comp
-    cursorLayerSize <- fmap (^. sizeL) $ getComponentSize $ cursor comp
     textLayer <- figures $ messageEngine comp
 
+    let cursorSize = div <$> CAnim.textureSize (cursor comp) <*> CAnim.division (CAnim.config (cursor comp))
     let windowSize = CLayer.size $ window $ config comp
 
     return
       $ map (translate (CLayer.position (window (config comp)))) $ baseLayer
       ++ map (translate (Vect.V2 20 10)) textLayer
-      ++ map (translate (Vect.V2 ((windowSize ^. _x - cursorLayerSize ^. _x) `div` 2) (windowSize ^. _y - cursorLayerSize ^. _y))) cursorLayer
+      ++ map (translate (Vect.V2 ((windowSize ^. _x - cursorSize ^. _x) `div` 2) (windowSize ^. _y - cursorSize ^. _y))) cursorLayer
 
 data Config = Config {
   engine :: CME.Config,

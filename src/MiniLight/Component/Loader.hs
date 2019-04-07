@@ -6,7 +6,6 @@ module MiniLight.Component.Loader where
 import Control.Applicative
 import Control.Monad.IO.Class
 import Data.Aeson hiding (Result)
-import Data.Aeson.Types (parseEither)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE

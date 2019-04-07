@@ -60,9 +60,11 @@ liftMiniLight m = do
   LightT $ ReaderT $ \_ -> liftIO $ runReaderT
     (runLightT' m)
     (LightEnv {renderer = renderer, fontCache = fontCache})
+{-# INLINE liftMiniLight #-}
 
 transEnvLightT :: (env' -> env) -> LightT env m a -> LightT env' m a
 transEnvLightT f m = LightT $ ReaderT $ runReaderT (runLightT' m) . f
+{-# INLINE transEnvLightT #-}
 
 loadFontCache :: MonadIO m => m FontMap
 loadFontCache = do
