@@ -27,10 +27,14 @@ sizeL = lens (\(SDL.Rectangle _ size) -> size)
 
 newtype Figure = Figure { getFigure :: forall env m r. (MonadIO m, MonadMask m, HasLightEnv env) => Vect.V4 Word8 -> (SDL.Texture -> SDL.Rectangle CInt -> SDL.Rectangle CInt -> LightT env m r) -> LightT env m r }
 
-freeFigure
-  :: (HasLightEnv env, MonadIO m, MonadMask m) => Figure -> LightT env m ()
-freeFigure fig = getFigure fig 0 (\t _ _ -> SDL.destroyTexture t)
-{-# INLINE freeFigure #-}
+newtype FigureData = FigureData { getFigureData :: (SDL.Texture, SDL.Rectangle CInt, SDL.Rectangle CInt) }
+
+freeze
+  :: (HasLightEnv env, MonadIO m, MonadMask m)
+  => Figure
+  -> LightT env m FigureData
+freeze fig = FigureData <$> getFigure fig 0 (\x y z -> return (x, y, z))
+{-# INLINE freeze #-}
 
 getTexture
   :: (HasLightEnv env, MonadIO m, MonadMask m)
@@ -103,6 +107,7 @@ class Rendering r where
 
   text :: SDL.Font.Font -> T.Text -> r
   picture :: FilePath -> r
+  figureOf :: FigureData -> r
 
 instance Rendering Figure where
   translate v (Figure fig) =
@@ -143,3 +148,7 @@ instance Rendering Figure where
     k texture rect rect
   {-# INLINE picture #-}
 
+  figureOf fd = Figure $ \_ k -> do
+    let (x,y,z) = getFigureData fd
+    k x y z
+  {-# INLINE figureOf #-}
