@@ -56,6 +56,7 @@ library
     FlexibleInstances
     OverloadedStrings
     MultiParamTypeClasses
+    Strict
   ghc-options: -O2 -Wall -Wno-name-shadowing
 
 test-suite tests

@@ -126,8 +126,6 @@ runMainloop conf initial loop = do
           )
           events
 
-    liftIO performGC
-
     unless quit $ go loopState' s'
 
 --
