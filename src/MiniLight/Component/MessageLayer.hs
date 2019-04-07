@@ -23,6 +23,7 @@ data MessageEngine = MessageEngine {
   textTexture :: Figure,
   layer :: CLayer.Layer,
   cursor :: CAnim.AnimationLayer,
+  finished :: Bool,
   config :: Config
 }
 
@@ -33,14 +34,19 @@ instance ComponentUnit MessageEngine where
   update = execStateT $ do
     comp <- get
 
-    when (counter comp `mod` 10 == 0) $ do
-      id %= (\c -> c { rendered = rendered c + 1 })
+    unless (finished comp) $ do
+      when (counter comp `mod` 10 == 0) $ do
+        id %= (\c -> c { rendered = rendered c + 1 })
 
-    id %= (\c -> c { counter = counter c + 1 })
+        comp <- get
+        when (rendered comp == T.length (message comp)) $ do
+          id %= (\c -> c { finished = True })
 
-    zoom cursorL $ do
-      c <- use id
-      id <~ lift (update c)
+      id %= (\c -> c { counter = counter c + 1 })
+
+      zoom cursorL $ do
+        c <- use id
+        id <~ lift (update c)
 
   figures comp = fmap (map (translate $ position $ config comp)) $ do
     baseLayer <- figures $ layer comp
@@ -60,7 +66,8 @@ data Config = Config {
   layerImage :: FilePath,
   waitingImage :: FilePath,
   waitingImageDivision :: Vect.V2 Int,
-  messages :: T.Text
+  messages :: T.Text,
+  static :: Bool
 }
 
 instance FromJSON Config where
@@ -80,7 +87,9 @@ instance FromJSON Config where
 
     messages <- v .: "messages"
 
-    return $ Config size position layerImage waitingImage waitingImageDivision messages
+    static <- v .:? "static" .!= False
+
+    return $ Config size position layerImage waitingImage waitingImageDivision messages static
 
 new :: SDL.Font.Font -> Config -> MiniLight MessageEngine
 new font conf = do
@@ -91,10 +100,11 @@ new font conf = do
     { font        = font
     , counter     = 0
     , message     = messages conf
-    , rendered    = 0
+    , rendered    = if static conf then T.length (messages conf) else 0
     , textTexture = text font $ messages conf
     , layer       = layer
     , cursor      = cursor
+    , finished    = static conf
     , config      = conf
     }
 
