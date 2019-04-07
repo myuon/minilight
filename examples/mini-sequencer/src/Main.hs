@@ -66,11 +66,6 @@ mainloop _ = do
 
   return ()
 
-foldResult :: (String -> b) -> (a -> b) -> Result a -> b
-foldResult f g r = case r of
-  Error   err -> f err
-  Success a   -> g a
-
 main :: IO ()
 main = do
   fonts  <- buildCache
@@ -102,5 +97,3 @@ main = do
           runMainloop (LoopConfig {watchKeys = Nothing})
                       (Game {components = comps, sound = sound})
                       (\st -> execStateT $ mainloop st)
-
-

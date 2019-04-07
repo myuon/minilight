@@ -5,6 +5,7 @@ module MiniLight (
 
   runLightT,
   LoopConfig (..),
+  defConfig,
   LoopState (..),
   runMainloop,
 
@@ -16,7 +17,11 @@ module MiniLight (
 import Control.Concurrent (threadDelay)
 import Control.Monad.Catch
 import Control.Monad.Reader
+import qualified Data.Aeson as Aeson
 import qualified Data.Map as M
+import qualified Data.Text as T
+import qualified Data.Vector as V
+import qualified Data.Vector.Mutable as VM
 import Lens.Micro.Mtl
 import MiniLight.Component
 import MiniLight.Light
@@ -34,12 +39,22 @@ runLightT init prog = withSDL $ withWindow $ \window -> do
   runReaderT (runLightT' prog) $ init $ LightEnv {renderer = renderer}
 
 data LoopConfig = LoopConfig {
-  watchKeys :: Maybe [SDL.Scancode]
+  watchKeys :: Maybe [SDL.Scancode],
+  appConfigFile :: Maybe FilePath,
+  componentResolver :: T.Text -> Aeson.Value -> MiniLight Component
 }
+
+defConfig :: LoopConfig
+defConfig = LoopConfig
+  { watchKeys         = Nothing
+  , appConfigFile     = Nothing
+  , componentResolver = defResolver
+  }
 
 data LoopState = LoopState {
   keyStates :: M.Map SDL.Scancode Int,
-  events :: [SDL.Event]
+  events :: [SDL.Event],
+  components :: VM.IOVector Component
 }
 
 runMainloop
@@ -48,9 +63,14 @@ runMainloop
   -> s  -- ^ initial state
   -> (LoopState -> s -> LightT env m s)  -- ^ loop
   -> LightT env m ()
-runMainloop conf initial loop = go
-  (LoopState {keyStates = M.empty, events = []})
-  initial
+runMainloop conf initial loop = do
+  components <- liftMiniLight $ (liftIO . V.thaw) . V.fromList =<< maybe
+    (return [])
+    (flip loadAppConfig (componentResolver conf))
+    (appConfigFile conf)
+
+  go (LoopState {keyStates = M.empty, events = [], components = components})
+     initial
  where
   go loopState s = do
     renderer <- view rendererL
@@ -74,7 +94,7 @@ runMainloop conf initial loop = go
             (watchKeys conf)
         $ keyStates loopState
         )
-    let loopState = LoopState {keyStates = specifiedKeys, events = events}
+    let loopState = loopState { keyStates = specifiedKeys, events = events }
     let quit = any
           ( \event -> case SDL.eventPayload event of
             SDL.WindowClosedEvent _ -> True

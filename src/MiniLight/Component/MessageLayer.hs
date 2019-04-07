@@ -43,7 +43,7 @@ instance ComponentUnit MessageLayer where
     cursorLayerSize <- fmap (^. sizeL) $ getComponentSize $ cursor comp
     textLayer <- figures $ engine comp
 
-    let windowSize = size $ config comp
+    let windowSize = CLayer.size $ layerConf $ config comp
 
     return
       $ baseLayer
@@ -51,38 +51,27 @@ instance ComponentUnit MessageLayer where
       ++ map (translate (Vect.V2 ((windowSize ^. _x - cursorLayerSize ^. _x) `div` 2) (windowSize ^. _y - cursorLayerSize ^. _y))) cursorLayer
 
 data Config = Config {
-  messageEngineConf :: CME.Config,
-  size :: Vect.V2 Int,
   position :: Vect.V2 Int,
-  layerImage :: FilePath,
-  waitingImage :: FilePath,
-  waitingImageDivision :: Vect.V2 Int
+  messageEngineConf :: CME.Config,
+  layerConf :: CLayer.Config,
+  nextConf :: CAnim.Config
 }
 
 instance FromJSON Config where
   parseJSON = withObject "config" $ \v -> do
-    windowJSON <- v .: "window"
-    (size, position, layerImage) <- flip (withObject "window") windowJSON $ \v -> do
-      size <- withObject "size" (\v -> Vect.V2 <$> v .: "width" <*> v .: "height") =<< v .: "size"
-      position <- withObject "position" (\v -> Vect.V2 <$> v .: "x" <*> v .: "y") =<< v .: "position"
-      layerImage <- v .: "image"
-      return (size, position, layerImage)
+    position <- withObject "position" (\v -> Vect.V2 <$> v .: "x" <*> v .: "y") =<< v .: "position"
 
-    nextJSON <- v .: "next"
-    (waitingImage, waitingImageDivision) <- flip (withObject "image") nextJSON $ \v -> do
-      waitingImage <- v .: "image"
-      division <- (\v -> Vect.V2 <$> v .: "x" <*> v .: "y") =<< v .: "division"
-      return (waitingImage, division)
+    layerConf <- parseJSON =<< v .: "window"
+    nextConf <- parseJSON =<< v .: "next"
+    messageEngineConf <- parseJSON =<< v .: "engine"
 
-    messageEngineConf <- v .: "engine"
-
-    return $ Config messageEngineConf size position layerImage waitingImage waitingImageDivision
+    return $ Config position messageEngineConf layerConf nextConf
 
 new :: SDL.Font.Font -> Config -> MiniLight MessageLayer
 new font conf = do
   engine <- CME.new font (messageEngineConf conf)
-  layer  <- CLayer.newNineTile (layerImage conf) (fmap toEnum $ size conf)
-  cursor <- CAnim.new (waitingImage conf) (waitingImageDivision conf)
+  layer  <- CLayer.newNineTile (layerConf conf)
+  cursor <- CAnim.new (nextConf conf)
 
   return $ MessageLayer
     { engine = engine
@@ -90,5 +79,3 @@ new font conf = do
     , cursor = cursor
     , config = conf
     }
-
-
