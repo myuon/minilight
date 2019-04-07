@@ -2,72 +2,61 @@ module MiniLight.Component.MessageLayer where
 
 import Control.Monad.State
 import Data.Aeson
-import qualified Data.Text as T
 import Lens.Micro
 import Lens.Micro.Mtl
 import Linear
 import MiniLight.Component.Types
 import qualified MiniLight.Component.Layer as CLayer
 import qualified MiniLight.Component.AnimationLayer as CAnim
+import qualified MiniLight.Component.MessageEngine as CME
 import MiniLight.Figure
 import MiniLight.Light
-import qualified SDL
 import qualified SDL.Font
 import qualified SDL.Vect as Vect
 
-data MessageEngine = MessageEngine {
-  font :: SDL.Font.Font,
-  counter :: Int,
-  message :: T.Text,
-  rendered :: Int,
-  textTexture :: Figure,
+data MessageLayer = MessageLayer {
+  engine :: CME.MessageEngine,
   layer :: CLayer.Layer,
   cursor :: CAnim.AnimationLayer,
-  finished :: Bool,
   config :: Config
 }
 
-cursorL :: Lens' MessageEngine CAnim.AnimationLayer
+engineL :: Lens' MessageLayer CME.MessageEngine
+engineL = lens engine (\s a -> s { engine = a })
+
+cursorL :: Lens' MessageLayer CAnim.AnimationLayer
 cursorL = lens cursor (\s a -> s { cursor = a })
 
-instance ComponentUnit MessageEngine where
+instance ComponentUnit MessageLayer where
   update = execStateT $ do
-    comp <- get
+    zoom engineL $ do
+      c <- use id
+      id <~ lift (update c)
 
-    unless (finished comp) $ do
-      when (counter comp `mod` 10 == 0) $ do
-        id %= (\c -> c { rendered = rendered c + 1 })
-
-        comp <- get
-        when (rendered comp == T.length (message comp)) $ do
-          id %= (\c -> c { finished = True })
-
-      id %= (\c -> c { counter = counter c + 1 })
-
-      zoom cursorL $ do
-        c <- use id
-        id <~ lift (update c)
+    zoom cursorL $ do
+      c <- use id
+      id <~ lift (update c)
 
   figures comp = fmap (map (translate $ position $ config comp)) $ do
     baseLayer <- figures $ layer comp
     cursorLayer <- figures $ cursor comp
     cursorLayerSize <- fmap (^. sizeL) $ getComponentSize $ cursor comp
-    (w, h) <- SDL.Font.size (font comp) (T.take (rendered comp) $ message comp)
+    textLayer <- figures $ engine comp
+
     let windowSize = size $ config comp
 
     return
       $ baseLayer
-      ++ [ translate (Vect.V2 20 10) $ colorize (Vect.V4 255 255 255 255) $ clip (SDL.Rectangle 0 (Vect.V2 w h)) $ textTexture comp ]
+      ++ map (translate (Vect.V2 20 10)) textLayer
       ++ map (translate (Vect.V2 ((windowSize ^. _x - cursorLayerSize ^. _x) `div` 2) (windowSize ^. _y - cursorLayerSize ^. _y))) cursorLayer
 
 data Config = Config {
+  messageEngineConf :: CME.Config,
   size :: Vect.V2 Int,
   position :: Vect.V2 Int,
   layerImage :: FilePath,
   waitingImage :: FilePath,
-  waitingImageDivision :: Vect.V2 Int,
-  messages :: T.Text,
-  static :: Bool
+  waitingImageDivision :: Vect.V2 Int
 }
 
 instance FromJSON Config where
@@ -85,27 +74,21 @@ instance FromJSON Config where
       division <- (\v -> Vect.V2 <$> v .: "x" <*> v .: "y") =<< v .: "division"
       return (waitingImage, division)
 
-    messages <- v .: "messages"
+    messageEngineConf <- v .: "engine"
 
-    static <- v .:? "static" .!= False
+    return $ Config messageEngineConf size position layerImage waitingImage waitingImageDivision
 
-    return $ Config size position layerImage waitingImage waitingImageDivision messages static
-
-new :: SDL.Font.Font -> Config -> MiniLight MessageEngine
+new :: SDL.Font.Font -> Config -> MiniLight MessageLayer
 new font conf = do
+  engine <- CME.new font (messageEngineConf conf)
   layer  <- CLayer.newNineTile (layerImage conf) (fmap toEnum $ size conf)
   cursor <- CAnim.new (waitingImage conf) (waitingImageDivision conf)
 
-  return $ MessageEngine
-    { font        = font
-    , counter     = 0
-    , message     = messages conf
-    , rendered    = if static conf then T.length (messages conf) else 0
-    , textTexture = text font $ messages conf
-    , layer       = layer
-    , cursor      = cursor
-    , finished    = static conf
-    , config      = conf
+  return $ MessageLayer
+    { engine = engine
+    , layer  = layer
+    , cursor = cursor
+    , config = conf
     }
 
 

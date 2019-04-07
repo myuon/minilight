@@ -65,5 +65,3 @@ new font conf = do
     , finished    = static conf
     , config      = conf
     }
-
-
