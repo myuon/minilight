@@ -4,3 +4,6 @@ app:
       messages: "停止"
       static: true
       color: [0,0,0,255]
+      font:
+        family: IPAGothic
+        size: 22

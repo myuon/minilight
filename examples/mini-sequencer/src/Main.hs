@@ -47,23 +47,11 @@ pulse = WAVE
   frameRate = 44100
 
 data Game = Game {
-  components :: VM.IOVector Component,
   sound :: SDL.Mixer.Chunk
 }
 
 mainloop :: LoopState -> StateT Game MiniLight ()
 mainloop _ = do
-  game <- get
-
-  forM_ [0 .. VM.length (components game) - 1] $ \i -> lift $ do
-    comp <- liftIO $ VM.read (components game) i
-    draw comp
-
-  forM_ [0 .. VM.length (components game) - 1] $ \i -> lift $ do
-    comp  <- liftIO $ VM.read (components game) i
-    comp' <- update comp
-    liftIO $ VM.write (components game) i comp'
-
   return ()
 
 main :: IO ()
@@ -80,20 +68,7 @@ main = do
     SDL.Mixer.setVolume 10 sound
 --    SDL.Mixer.play sound
 
-    runLightT id
-      $ withFont
-          ( (\(Just x) -> x)
-          $ findFontInCache fonts
-          $ FontDescriptor "IPAGothic"
-          $ FontStyle False False
-          )
-      $ \font -> do
-          comps <-
-            (liftIO . V.thaw . V.fromList =<<)
-            $ loadAppConfig "resources/app.yml"
-            $ \name props -> case name of
-                "message-engine" -> Component
-                  <$> CME.new font (foldResult error id $ fromJSON props)
-          runMainloop (LoopConfig {watchKeys = Nothing})
-                      (Game {components = comps, sound = sound})
-                      (\st -> execStateT $ mainloop st)
+    runLightT id $ do
+      runMainloop (defConfig { appConfigFile = Just "resources/app.yml" })
+                  (Game {sound = sound})
+                  (\st -> return)
