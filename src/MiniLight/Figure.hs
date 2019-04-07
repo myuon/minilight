@@ -73,9 +73,9 @@ render fig = do
   renderer <- view rendererL
 
   let color = Vect.V4 255 255 255 255
-  texture <- getFigure fig color (\x _ _ -> return x)
-  srcArea <- getFigure fig color (\_ y _ -> return y)
-  tgtArea <- getFigure fig color (\_ _ y -> return y)
+  (texture, srcArea, tgtArea) <- getFigure fig
+                                           color
+                                           (\x y z -> return (x, y, z))
 
   SDL.copy renderer texture (Just srcArea) (Just tgtArea)
 {-# INLINE render #-}
@@ -115,9 +115,7 @@ instance Rendering Figure where
 
   -- srcArea and tgtArea should be the same size
   clip (SDL.Rectangle (SDL.P point') size') (Figure fig) = Figure $ \color k -> do
-    tex <- fig color (\x _ _ -> return x)
-    srcArea <- fig color (\_ y _ -> return y)
-    tgtArea <- fig color (\_ _ y -> return y)
+    (tex, srcArea, tgtArea) <- fig color (\x y z -> return (x, y, z))
 
     let SDL.Rectangle (SDL.P point) _ = srcArea
     let newSrcArea = (SDL.Rectangle (SDL.P $ point + fmap toEnum point') (fmap toEnum size'))
