@@ -15,7 +15,6 @@ import qualified SDL.Vect as Vect
 data MessageEngine = MessageEngine {
   font :: SDL.Font.Font,
   counter :: Int,
-  message :: T.Text,
   rendered :: Int,
   textTexture :: FigureData,
   finished :: Bool,
@@ -31,13 +30,13 @@ instance ComponentUnit MessageEngine where
         id %= (\c -> c { rendered = rendered c + 1 })
 
         comp <- get
-        when (rendered comp == T.length (message comp)) $ do
+        when (rendered comp == T.length (messages (config comp))) $ do
           id %= (\c -> c { finished = True })
 
       id %= (\c -> c { counter = counter c + 1 })
 
   figures comp = do
-    (w, h) <- SDL.Font.size (font comp) (T.take (rendered comp) $ message comp)
+    (w, h) <- SDL.Font.size (font comp) (T.take (rendered comp) $ messages (config comp))
 
     return [
       colorize (color (config comp)) $ clip (SDL.Rectangle 0 (Vect.V2 w h)) $ figureOf $ textTexture comp
@@ -55,7 +54,7 @@ instance FromJSON Config where
   parseJSON = withObject "config" $ \v -> do
     messages <- v .: "messages"
     static <- v .:? "static" .!= False
-    [r,g,b,a] <- v .: "color" .!= [255, 255, 255, 255]
+    [r,g,b,a] <- v .:? "color" .!= [255, 255, 255, 255]
     (fontConf, size) <- (v .: "font" >>=) $ withObject "font" $ \v -> do
       family <- v .: "family"
       size <- v .: "size"
@@ -74,7 +73,6 @@ new conf = do
   return $ MessageEngine
     { font        = font
     , counter     = 0
-    , message     = messages conf
     , rendered    = if static conf then T.length (messages conf) else 0
     , textTexture = textTexture
     , finished    = static conf
