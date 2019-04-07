@@ -1,12 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import Control.Monad.State
+import Control.Monad.IO.Class
+import Data.Aeson
 import qualified Data.ByteString as B
 import qualified Data.Knob as Knob
 import Data.List (transpose)
+import qualified Data.Vector as V
+import qualified Data.Vector.Mutable as VM
 import Data.WAVE
 import Graphics.Text.TrueType
 import MiniLight
+import qualified MiniLight.Component.Layer as CLayer
+import qualified MiniLight.Component.MessageEngine as CME
 import System.IO (IOMode(..), hClose)
 import qualified SDL.Mixer
 
@@ -39,8 +46,34 @@ pulse = WAVE
   samples   = gen_sine 440 2 frameRate
   frameRate = 44100
 
+data Game = Game {
+  components :: VM.IOVector Component,
+  sound :: SDL.Mixer.Chunk
+}
+
+mainloop :: LoopState -> StateT Game MiniLight ()
+mainloop _ = do
+  game <- get
+
+  forM_ [0 .. VM.length (components game) - 1] $ \i -> lift $ do
+    comp <- liftIO $ VM.read (components game) i
+    draw comp
+
+  forM_ [0 .. VM.length (components game) - 1] $ \i -> lift $ do
+    comp  <- liftIO $ VM.read (components game) i
+    comp' <- update comp
+    liftIO $ VM.write (components game) i comp'
+
+  return ()
+
+foldResult :: (String -> b) -> (a -> b) -> Result a -> b
+foldResult f g r = case r of
+  Error   err -> f err
+  Success a   -> g a
+
 main :: IO ()
 main = do
+  fonts  <- buildCache
   knob   <- Knob.newKnob ""
   handle <- Knob.newFileHandle knob "<buffer>" WriteMode
   hPutWAVE handle pulse
@@ -50,9 +83,24 @@ main = do
     buffer <- Knob.getContents knob
     sound  <- SDL.Mixer.decode buffer
     SDL.Mixer.setVolume 10 sound
-    SDL.Mixer.play sound
+--    SDL.Mixer.play sound
 
     runLightT id
-      $ runMainloop (LoopConfig {watchKeys = Nothing}) () (\_ -> return)
+      $ withFont
+          ( (\(Just x) -> x)
+          $ findFontInCache fonts
+          $ FontDescriptor "IPAGothic"
+          $ FontStyle False False
+          )
+      $ \font -> do
+          comps <-
+            (liftIO . V.thaw . V.fromList =<<)
+            $ loadAppConfig "resources/app.yml"
+            $ \name props -> case name of
+                "message-engine" -> Component
+                  <$> CME.new font (foldResult error id $ fromJSON props)
+          runMainloop (LoopConfig {watchKeys = Nothing})
+                      (Game {components = comps, sound = sound})
+                      (\st -> execStateT $ mainloop st)
 
--- print =<< enumerateFonts <$> buildCache
+

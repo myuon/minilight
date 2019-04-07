@@ -1,0 +1,6 @@
+app:
+  - name: message-engine
+    properties:
+      messages: "停止"
+      static: true
+      color: [0,0,0,255]
