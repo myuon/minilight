@@ -22,6 +22,11 @@ executable mini-sequencer
   -- other-extensions:
   build-depends:
     base ^>=4.12.0.0,
+    bytestring,
+    knob,
     minilight,
+    sdl2-mixer,
+    FontyFruity,
+    WAVE,
   hs-source-dirs:      src
   default-language:    Haskell2010
