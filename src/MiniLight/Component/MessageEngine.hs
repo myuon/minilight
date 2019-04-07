@@ -3,6 +3,7 @@ module MiniLight.Component.MessageEngine where
 import Control.Monad.State
 import Data.Aeson
 import qualified Data.Text as T
+import Data.Word (Word8)
 import Lens.Micro.Mtl
 import MiniLight.Component.Types
 import MiniLight.Figure
@@ -39,20 +40,22 @@ instance ComponentUnit MessageEngine where
     (w, h) <- SDL.Font.size (font comp) (T.take (rendered comp) $ message comp)
 
     return [
-      colorize (Vect.V4 255 255 255 255) $ clip (SDL.Rectangle 0 (Vect.V2 w h)) $ textTexture comp
+      colorize (color (config comp)) $ clip (SDL.Rectangle 0 (Vect.V2 w h)) $ textTexture comp
       ]
 
 data Config = Config {
   messages :: T.Text,
-  static :: Bool
+  static :: Bool,
+  color :: Vect.V4 Word8
 }
 
 instance FromJSON Config where
   parseJSON = withObject "config" $ \v -> do
     messages <- v .: "messages"
     static <- v .:? "static" .!= False
+    [r,g,b,a] <- v .: "color" .!= [255, 255, 255, 255]
 
-    return $ Config messages static
+    return $ Config messages static (Vect.V4 r g b a)
 
 new :: SDL.Font.Font -> Config -> MiniLight MessageEngine
 new font conf = do
