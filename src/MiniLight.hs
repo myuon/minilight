@@ -26,7 +26,6 @@ import Lens.Micro.Mtl
 import MiniLight.Component
 import MiniLight.Light
 import MiniLight.Figure
-import System.Mem
 import qualified SDL
 import qualified SDL.Font
 
