@@ -14,6 +14,7 @@ import MiniLight.Component.Loader
 import qualified MiniLight.Component.Layer as Layer
 import qualified MiniLight.Component.AnimationLayer as AnimationLayer
 import qualified MiniLight.Component.MessageEngine as MessageEngine
+import qualified MiniLight.Component.MessageLayer as MessageLayer
 
 foldResult :: (String -> b) -> (a -> b) -> Aeson.Result a -> b
 foldResult f g r = case r of
@@ -33,5 +34,5 @@ defResolver name props = case name of
   "message-engine" ->
     Component <$> MessageEngine.new (foldResult error id $ Aeson.fromJSON props)
   "message-layer" ->
-    Component <$> MessageEngine.new (foldResult error id $ Aeson.fromJSON props)
+    Component <$> MessageLayer.new (foldResult error id $ Aeson.fromJSON props)
   _ -> error $ T.unpack $ "Component not defined: `" <> name <> "`"

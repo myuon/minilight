@@ -20,7 +20,8 @@ instance ComponentUnit Layer where
 
 data Config = Config {
   image :: FilePath,
-  size :: Vect.V2 Int
+  size :: Vect.V2 Int,
+  position :: Vect.V2 Int
 }
 
 instance FromJSON Config where
@@ -28,7 +29,10 @@ instance FromJSON Config where
     image <- v .: "image"
     size <- withObject "size" (\v -> Vect.V2 <$> v .: "width" <*> v .: "height") =<< v .: "size"
 
-    return $ Config image size
+    positionMaybe <- v .:? "position"
+    position <- maybe (return 0) (withObject "position" (\v -> Vect.V2 <$> v .: "x" <*> v .: "y")) positionMaybe
+
+    return $ Config image size position
 
 new :: Config -> MiniLight Layer
 new conf = do
