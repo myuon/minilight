@@ -19,7 +19,6 @@ import Control.Monad.Reader
 import qualified Data.Aeson as Aeson
 import qualified Data.Map as M
 import qualified Data.Text as T
-import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
 import Graphics.Text.TrueType
 import Lens.Micro.Mtl
@@ -61,14 +60,20 @@ data LoopState = LoopState {
   components :: VM.IOVector Component
 }
 
+fromList :: MonadIO m => [a] -> m (VM.IOVector a)
+fromList xs = liftIO $ do
+  vec <- VM.new $ length xs
+  forM_ (zip [0 ..] xs) $ uncurry (VM.write vec)
+  return vec
+
 runMainloop
-  :: (HasLightEnv env, MonadIO m)
+  :: (HasLightEnv env, MonadIO m, MonadMask m)
   => LoopConfig  -- ^ loop config
   -> s  -- ^ initial state
   -> (LoopState -> s -> LightT env m s)  -- ^ loop
   -> LightT env m ()
 runMainloop conf initial loop = do
-  components <- liftMiniLight $ (liftIO . V.thaw) . V.fromList =<< maybe
+  components <- liftMiniLight $ fromList =<< maybe
     (return [])
     (flip loadAppConfig (componentResolver conf))
     (appConfigFile conf)
@@ -80,6 +85,15 @@ runMainloop conf initial loop = do
     renderer <- view rendererL
     liftIO $ SDL.rendererDrawColor renderer SDL.$= 255
     liftIO $ SDL.clear renderer
+
+    forM_ [0 .. VM.length (components loopState) - 1] $ \i -> do
+      comp <- liftIO $ VM.read (components loopState) i
+      draw comp
+
+    forM_ [0 .. VM.length (components loopState) - 1] $ \i -> do
+      comp  <- liftIO $ VM.read (components loopState) i
+      comp' <- update comp
+      liftIO $ VM.write (components loopState) i comp'
 
     s' <- loop loopState s
 
@@ -98,7 +112,7 @@ runMainloop conf initial loop = do
             (watchKeys conf)
         $ keyStates loopState
         )
-    let loopState = loopState { keyStates = specifiedKeys, events = events }
+    let loopState' = loopState { keyStates = specifiedKeys, events = events }
     let quit = any
           ( \event -> case SDL.eventPayload event of
             SDL.WindowClosedEvent _ -> True
@@ -107,7 +121,7 @@ runMainloop conf initial loop = do
           )
           events
 
-    unless quit $ go loopState s'
+    unless quit $ go loopState' s'
 
 --
 

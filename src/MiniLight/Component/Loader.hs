@@ -31,9 +31,10 @@ data AppConfig = AppConfig {
 instance FromJSON AppConfig
 
 loadAppConfig
-  :: FilePath
-  -> (T.Text -> Value -> MiniLight Component)
-  -> MiniLight [Component]
+  :: (HasLightEnv env, MonadIO m)
+  => FilePath
+  -> (T.Text -> Value -> LightT env m Component)
+  -> LightT env m [Component]
 loadAppConfig path mapper = do
   conf <- liftIO $ (\(Data.Aeson.Success a) -> a) . fromJSON . resolve . either (error . show) id <$> decodeFileEither path
   mapM (\conf -> mapper (name conf) (resolve $ properties conf)) (app conf)
