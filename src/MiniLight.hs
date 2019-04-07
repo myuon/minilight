@@ -10,8 +10,7 @@ module MiniLight (
   runMainloop,
 
   withSDL,
-  withWindow,
-  withFont
+  withWindow
 ) where
 
 import Control.Concurrent (threadDelay)
@@ -22,6 +21,7 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
+import Graphics.Text.TrueType
 import Lens.Micro.Mtl
 import MiniLight.Component
 import MiniLight.Light
@@ -36,7 +36,11 @@ runLightT
   -> m a
 runLightT init prog = withSDL $ withWindow $ \window -> do
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
-  runReaderT (runLightT' prog) $ init $ LightEnv {renderer = renderer}
+  fc       <- loadFontCache
+  runReaderT (runLightT' prog) $ init $ LightEnv
+    { renderer  = renderer
+    , fontCache = fc
+    }
 
 data LoopConfig = LoopConfig {
   watchKeys :: Maybe [SDL.Scancode],
@@ -116,8 +120,3 @@ withSDL =
 withWindow :: (MonadIO m, MonadMask m) => (SDL.Window -> m a) -> m a
 withWindow =
   bracket (SDL.createWindow "window" SDL.defaultWindow) SDL.destroyWindow
-
-withFont
-  :: (MonadIO m, MonadMask m) => FilePath -> (SDL.Font.Font -> m a) -> m a
-withFont path = bracket (SDL.Font.load path 22) SDL.Font.free
-
