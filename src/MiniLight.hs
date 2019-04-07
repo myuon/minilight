@@ -17,7 +17,8 @@ import Control.Concurrent (threadDelay)
 import Control.Monad.Catch
 import Control.Monad.Reader
 import qualified Data.Aeson as Aeson
-import qualified Data.Map.Strict as M
+import Data.Hashable (Hashable(..))
+import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
 import qualified Data.Vector.Mutable as VM
 import Graphics.Text.TrueType
@@ -28,6 +29,9 @@ import MiniLight.Figure
 import System.Mem
 import qualified SDL
 import qualified SDL.Font
+
+instance Hashable SDL.Scancode where
+  hashWithSalt n sc = hashWithSalt n (SDL.unwrapScancode sc)
 
 runLightT
   :: (HasLightEnv env, MonadIO m, MonadMask m)
@@ -56,7 +60,7 @@ defConfig = LoopConfig
   }
 
 data LoopState = LoopState {
-  keyStates :: M.Map SDL.Scancode Int,
+  keyStates :: HM.HashMap SDL.Scancode Int,
   events :: [SDL.Event],
   components :: VM.IOVector Component
 }
@@ -79,7 +83,7 @@ runMainloop conf initial loop = do
     (flip loadAppConfig (componentResolver conf))
     (appConfigFile conf)
 
-  go (LoopState {keyStates = M.empty, events = [], components = components})
+  go (LoopState {keyStates = HM.empty, events = [], components = components})
      initial
  where
   go loopState s = do
@@ -105,11 +109,11 @@ runMainloop conf initial loop = do
     keys   <- SDL.getKeyboardState
 
     let
-      specifiedKeys = M.mapWithKey
+      specifiedKeys = HM.mapWithKey
         (\k v -> if keys k then v + 1 else 0)
         ( maybe
             id
-            (\specified m -> M.fromList $ map (\s -> (s, m M.! s)) specified)
+            (\specified m -> HM.fromList $ map (\s -> (s, m HM.! s)) specified)
             (watchKeys conf)
         $ keyStates loopState
         )
