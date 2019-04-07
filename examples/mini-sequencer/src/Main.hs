@@ -2,18 +2,10 @@
 module Main where
 
 import Control.Monad.State
-import Control.Monad.IO.Class
-import Data.Aeson
-import qualified Data.ByteString as B
 import qualified Data.Knob as Knob
 import Data.List (transpose)
-import qualified Data.Vector as V
-import qualified Data.Vector.Mutable as VM
 import Data.WAVE
-import Graphics.Text.TrueType
 import MiniLight
-import qualified MiniLight.Component.Layer as CLayer
-import qualified MiniLight.Component.MessageEngine as CME
 import System.IO (IOMode(..), hClose)
 import qualified SDL.Mixer
 
@@ -29,7 +21,7 @@ gen_sine hz secs fr =
         * sin (2 * pi * (4 * hz) * fromIntegral t / fromIntegral fr)
         )
           / (1.0 + 0.5 + 0.25 + 0.125)
-      | t <- [0 .. floor (fromIntegral fr * secs)]
+      | t <- [(0 :: Int) .. floor (fromIntegral fr * secs)]
       ]
 
 pulse :: WAVE
@@ -56,7 +48,6 @@ mainloop _ = do
 
 main :: IO ()
 main = do
-  fonts  <- buildCache
   knob   <- Knob.newKnob ""
   handle <- Knob.newFileHandle knob "<buffer>" WriteMode
   hPutWAVE handle pulse
@@ -71,4 +62,4 @@ main = do
     runLightT id $ do
       runMainloop (defConfig { appConfigFile = Just "resources/app.yml" })
                   (Game {sound = sound})
-                  (\st -> return)
+                  (\_ -> return)
