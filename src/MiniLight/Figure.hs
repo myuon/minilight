@@ -1,4 +1,5 @@
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 module MiniLight.Figure where
@@ -7,7 +8,6 @@ import Control.Monad.Catch
 import Control.Monad.IO.Class
 import qualified Data.Text as T
 import Data.Word (Word8)
-import Foreign.C.Types (CInt)
 import Lens.Micro
 import Lens.Micro.Mtl
 import MiniLight.Light
@@ -25,38 +25,15 @@ sizeL :: Lens' (SDL.Rectangle a) (Vect.V2 a)
 sizeL = lens (\(SDL.Rectangle _ size) -> size)
              (\(SDL.Rectangle center _) size' -> SDL.Rectangle center size')
 
-newtype Figure = Figure { getFigure :: forall env m r. (MonadIO m, MonadMask m, HasLightEnv env) => Vect.V4 Word8 -> (SDL.Texture -> SDL.Rectangle CInt -> SDL.Rectangle CInt -> LightT env m r) -> LightT env m r }
+data Figure = Figure {
+  texture :: SDL.Texture,
+  sourceArea :: SDL.Rectangle Int,
+  targetArea :: SDL.Rectangle Int
+}
 
-newtype FigureData = FigureData { getFigureData :: (SDL.Texture, SDL.Rectangle CInt, SDL.Rectangle CInt) }
-
-freeze
-  :: (HasLightEnv env, MonadIO m, MonadMask m)
-  => Figure
-  -> LightT env m FigureData
-freeze fig = FigureData <$> getFigure fig 0 (\x y z -> return (x, y, z))
-{-# INLINE freeze #-}
-
-getTexture
-  :: (HasLightEnv env, MonadIO m, MonadMask m)
-  => Figure
-  -> LightT env m (SDL.Texture)
-getTexture fig = getFigure fig 0 (\x _ _ -> return x)
-{-# INLINE getTexture #-}
-
-getFigureSize
-  :: (HasLightEnv env, MonadIO m, MonadMask m)
-  => Figure
-  -> LightT env m (Vect.V2 CInt)
-getFigureSize fig =
-  getFigure fig 0 (\_ _ (SDL.Rectangle _ size) -> return size)
+getFigureSize :: Figure -> Vect.V2 Int
+getFigureSize fig = (\(SDL.Rectangle _ size) -> size) $ targetArea fig
 {-# INLINE getFigureSize #-}
-
-getFigureArea
-  :: (HasLightEnv env, MonadIO m, MonadMask m)
-  => Figure
-  -> LightT env m (SDL.Rectangle Int)
-getFigureArea fig = fmap (fmap fromEnum) $ getFigure fig 0 (\_ _ r -> return r)
-{-# INLINE getFigureArea #-}
 
 union :: SDL.Rectangle Int -> SDL.Rectangle Int -> SDL.Rectangle Int
 union x@(SDL.Rectangle (SDL.P c1) s1) y@(SDL.Rectangle (SDL.P c2) s2)
@@ -64,24 +41,14 @@ union x@(SDL.Rectangle (SDL.P c1) s1) y@(SDL.Rectangle (SDL.P c2) s2)
                              (c2 - c1 + fmap (`div` 2) (s1 + s2))
   | otherwise = union y x
 
-fromTexture :: MonadIO m => SDL.Texture -> m Figure
-fromTexture tex = do
-  tinfo <- SDL.queryTexture tex
-  let size = Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo)
-  return $ Figure $ \_ k -> do
-    k tex (SDL.Rectangle 0 size) (SDL.Rectangle 0 size)
-{-# INLINE fromTexture #-}
-
 render :: (HasLightEnv env, MonadIO m, MonadMask m) => Figure -> LightT env m ()
 render fig = do
   renderer <- view rendererL
 
-  let color = Vect.V4 255 255 255 255
-  (texture, srcArea, tgtArea) <- getFigure fig
-                                           color
-                                           (\x y z -> return (x, y, z))
-
-  SDL.copy renderer texture (Just srcArea) (Just tgtArea)
+  SDL.copy renderer
+           (texture fig)
+           (Just (fmap toEnum $ sourceArea fig))
+           (Just (fmap toEnum $ targetArea fig))
 {-# INLINE render #-}
 
 renders
@@ -100,55 +67,54 @@ withBlendedText font text color =
   bracket (SDL.Font.blended font color text) SDL.freeSurface
 {-# INLINE withBlendedText #-}
 
-class Rendering r where
+class Rendering r m | r -> m where
   translate :: Vect.V2 Int -> r -> r
-  colorize :: Vect.V4 Word8 -> r -> r
   clip :: SDL.Rectangle Int -> r -> r
 
-  text :: SDL.Font.Font -> T.Text -> r
-  picture :: FilePath -> r
-  figureOf :: FigureData -> r
+  text :: SDL.Font.Font -> Vect.V4 Word8 -> T.Text -> m r
+  picture :: FilePath -> m r
+  fromTexture :: SDL.Texture -> m r
 
-instance Rendering Figure where
-  translate v (Figure fig) =
+instance Rendering Figure MiniLight where
+  translate v fig =
     let cv = fmap toEnum v in
-    Figure $ \color k -> fig color (\tex srcArea tgtArea -> k tex srcArea (centerL +~ cv $ tgtArea))
+    fig { targetArea = centerL +~ cv $ targetArea fig }
   {-# INLINE translate #-}
 
-  colorize color (Figure fig) = Figure $ \_ -> fig color
-  {-# INLINE colorize #-}
-
   -- srcArea and tgtArea should be the same size
-  clip (SDL.Rectangle (SDL.P point') size') (Figure fig) = Figure $ \color k -> do
-    (tex, srcArea, tgtArea) <- fig color (\x y z -> return (x, y, z))
-
-    let SDL.Rectangle (SDL.P point) _ = srcArea
-    let newSrcArea = (SDL.Rectangle (SDL.P $ point + fmap toEnum point') (fmap toEnum size'))
-    let SDL.Rectangle p _ = tgtArea
-    let newTgtArea = (SDL.Rectangle p (fmap toEnum size'))
-    k tex newSrcArea newTgtArea
+  clip (SDL.Rectangle (SDL.P point') size') fig =
+    let SDL.Rectangle (SDL.P point) _ = sourceArea fig;
+        sourceArea' = (SDL.Rectangle (SDL.P $ point + fmap toEnum point') (fmap toEnum size'));
+        SDL.Rectangle p _ = targetArea fig;
+        targetArea' = (SDL.Rectangle p (fmap toEnum size'))
+    in fig { sourceArea = sourceArea', targetArea = targetArea' }
   {-# INLINE clip #-}
 
-  text font txt = Figure $ \color k -> do
+  text font color txt = do
     renderer <- view rendererL
 
     withBlendedText font txt color $ \surf -> do
       texture <- SDL.createTextureFromSurface renderer surf
       tinfo <- SDL.queryTexture texture
-      let rect = SDL.Rectangle (SDL.P 0) (Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo))
-      k texture rect rect
+      let rect = fmap fromEnum $ SDL.Rectangle (SDL.P 0) (Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo))
+
+      return $ Figure texture rect rect
   {-# INLINE text #-}
 
-  picture filepath = Figure $ \_ k -> do
+  fromTexture tex = do
+    tinfo <- SDL.queryTexture tex
+    let size = fmap fromEnum $ Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo)
+
+    return $ Figure tex (SDL.Rectangle 0 size) (SDL.Rectangle 0 size)
+  {-# INLINE fromTexture #-}
+
+  picture filepath = do
     renderer <- view rendererL
 
     texture <- SDL.Image.loadTexture renderer filepath
     tinfo <- SDL.queryTexture texture
-    let rect = SDL.Rectangle (SDL.P 0) (Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo))
-    k texture rect rect
+    let rect = fmap fromEnum $ SDL.Rectangle (SDL.P 0) (Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo))
+
+    return $ Figure texture rect rect
   {-# INLINE picture #-}
 
-  figureOf fd = Figure $ \_ k -> do
-    let (x,y,z) = getFigureData fd
-    k x y z
-  {-# INLINE figureOf #-}

@@ -16,7 +16,7 @@ data MessageEngine = MessageEngine {
   font :: SDL.Font.Font,
   counter :: Int,
   rendered :: Int,
-  textTexture :: FigureData,
+  textTexture :: Figure,
   finished :: Bool,
   config :: Config
 }
@@ -39,7 +39,7 @@ instance ComponentUnit MessageEngine where
     (w, h) <- SDL.Font.size (font comp) (T.take (rendered comp) $ messages (config comp))
 
     return [
-      clip (SDL.Rectangle 0 (Vect.V2 w h)) $ figureOf $ textTexture comp
+      clip (SDL.Rectangle 0 (Vect.V2 w h)) $ textTexture comp
       ]
 
 data Config = Config {
@@ -68,7 +68,7 @@ instance FromJSON Config where
 new :: Config -> MiniLight MessageEngine
 new conf = do
   font        <- loadFont (fontConf conf) (fontSize conf)
-  textTexture <- freeze $ colorize (color conf) $ text font $ messages conf
+  textTexture <- text font (color conf) $ messages conf
 
   return $ MessageEngine
     { font        = font

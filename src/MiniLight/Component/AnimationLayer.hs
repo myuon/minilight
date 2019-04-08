@@ -14,7 +14,7 @@ import qualified SDL.Vect as Vect
 data AnimationLayer = AnimationLayer {
   layer :: Layer.Layer,
   counter :: Int,
-  textureSize :: Vect.V2 Int,
+  tileSize :: Vect.V2 Int,
   scaler :: Int,
   config :: Config
 }
@@ -26,9 +26,8 @@ instance ComponentUnit AnimationLayer where
 
   figures comp = do
     let iv = V2 ((counter comp `div` scaler comp) `mod` division (config comp) ^. _x) ((counter comp `div` scaler comp) `div` division (config comp) ^. _x)
-    let tileSize = div <$> textureSize comp <*> division (config comp)
     return [
-      clip (SDL.Rectangle (SDL.P (tileSize * iv)) tileSize) $ Layer.layer $ layer comp
+      clip (SDL.Rectangle (SDL.P (tileSize comp * iv)) (tileSize comp)) $ Layer.layer $ layer comp
       ]
 
 data Config = Config {
@@ -46,13 +45,12 @@ instance FromJSON Config where
 new :: Config -> MiniLight AnimationLayer
 new conf = do
   layer <- Layer.new (layerConf conf)
-  size  <- getFigureSize (Layer.layer layer)
+  let size = getFigureSize (Layer.layer layer)
 
   return $ AnimationLayer
-    { layer       = layer
-    , counter     = 0
-    , textureSize = fmap fromEnum size
-    , scaler      = 25
-    , config      = conf
+    { layer    = layer
+    , counter  = 0
+    , tileSize = div <$> size <*> division conf
+    , scaler   = 25
+    , config   = conf
     }
-

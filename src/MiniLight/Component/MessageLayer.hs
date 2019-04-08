@@ -41,7 +41,7 @@ instance ComponentUnit MessageLayer where
     cursorLayer <- figures $ cursor comp
     textLayer <- figures $ messageEngine comp
 
-    let cursorSize = div <$> CAnim.textureSize (cursor comp) <*> CAnim.division (CAnim.config (cursor comp))
+    let cursorSize = div <$> CAnim.tileSize (cursor comp) <*> CAnim.division (CAnim.config (cursor comp))
     let windowSize = CLayer.size $ window $ config comp
 
     return

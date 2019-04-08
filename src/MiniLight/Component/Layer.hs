@@ -36,15 +36,16 @@ instance FromJSON Config where
 
 new :: Config -> MiniLight Layer
 new conf = do
-  return $ Layer {layer = picture (image conf)}
+  pic <- picture (image conf)
+  return $ Layer {layer = pic}
 
 newNineTile :: Config -> MiniLight Layer
 newNineTile conf = do
-  let pic = picture $ image conf
-  let siz = fmap toEnum $ size conf
+  pic <- picture $ image conf
+  let siz     = fmap toEnum $ size conf
+  let tex     = texture pic
+  let texSize = fmap toEnum $ getFigureSize pic
 
-  tex      <- getTexture pic
-  texSize  <- getFigureSize pic
   tinfo    <- SDL.queryTexture tex
   renderer <- view rendererL
 
