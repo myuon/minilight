@@ -41,7 +41,7 @@ workflows:
   # When test has passed, tag a release
   build_and_test:
     jobs:
-      - build-test-8_6_3
+      - build-8_6_3
       - build-mini-sequencer:
           requires:
-            - build-test-8_6_3
+            - build-8_6_3
