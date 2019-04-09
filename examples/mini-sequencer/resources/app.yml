@@ -7,3 +7,13 @@ app:
       font:
         family: IPAGothic
         size: 22
+  - name: button
+    properties:
+      label: This is a button.
+      color: [255,128,0,255]
+      size:
+        width: 100
+        height: 50
+      font:
+        family: IPAGothic
+        size: 22
