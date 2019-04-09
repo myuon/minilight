@@ -19,7 +19,10 @@ instance ComponentUnit Button where
   update = return
 
   figures comp = do
+    base <- liftMiniLight $ rectangleFilled (Vect.V4 200 200 200 255) (getFigureSize $ textTexture comp)
+
     return [
+      base,
       textTexture comp
       ]
 

@@ -57,6 +57,7 @@ library
     FlexibleInstances
     OverloadedStrings
     MultiParamTypeClasses
+    RankNTypes
     Strict
   ghc-options: -O2 -Wall -Wno-name-shadowing
 

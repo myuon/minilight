@@ -6,7 +6,8 @@ module MiniLight.Light (
   LightEnv (..),
   MiniLight,
   liftMiniLight,
-  transEnvLightT,
+  envLightT,
+  mapLightT,
 
   FontDescriptor(..),
   FontStyle(..),
@@ -62,9 +63,13 @@ liftMiniLight m = do
     (LightEnv {renderer = renderer, fontCache = fontCache})
 {-# INLINE liftMiniLight #-}
 
-transEnvLightT :: (env' -> env) -> LightT env m a -> LightT env' m a
-transEnvLightT f m = LightT $ ReaderT $ runReaderT (runLightT' m) . f
-{-# INLINE transEnvLightT #-}
+envLightT :: (env' -> env) -> LightT env m a -> LightT env' m a
+envLightT f m = LightT $ ReaderT $ runReaderT (runLightT' m) . f
+{-# INLINE envLightT #-}
+
+mapLightT :: (m a -> n a) -> LightT env m a -> LightT env n a
+mapLightT f m = LightT $ ReaderT $ f . runReaderT (runLightT' m)
+{-# INLINE mapLightT #-}
 
 loadFontCache :: MonadIO m => m FontMap
 loadFontCache = do
