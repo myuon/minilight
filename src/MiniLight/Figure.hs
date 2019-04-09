@@ -74,6 +74,8 @@ class Rendering r m | r -> m where
   text :: SDL.Font.Font -> Vect.V4 Word8 -> T.Text -> m r
   picture :: FilePath -> m r
   fromTexture :: SDL.Texture -> m r
+  rectangleOutline :: Vect.V4 Word8 -> Vect.V2 Int -> m r
+  rectangleFilled :: Vect.V4 Word8 -> Vect.V2 Int -> m r
 
 instance Rendering Figure MiniLight where
   translate v fig =
@@ -101,13 +103,6 @@ instance Rendering Figure MiniLight where
       return $ Figure texture rect rect
   {-# INLINE text #-}
 
-  fromTexture tex = do
-    tinfo <- SDL.queryTexture tex
-    let size = fmap fromEnum $ Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo)
-
-    return $ Figure tex (SDL.Rectangle 0 size) (SDL.Rectangle 0 size)
-  {-# INLINE fromTexture #-}
-
   picture filepath = do
     renderer <- view rendererL
 
@@ -118,3 +113,35 @@ instance Rendering Figure MiniLight where
     return $ Figure texture rect rect
   {-# INLINE picture #-}
 
+  fromTexture tex = do
+    tinfo <- SDL.queryTexture tex
+    let size = fmap fromEnum $ Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo)
+
+    return $ Figure tex (SDL.Rectangle 0 size) (SDL.Rectangle 0 size)
+  {-# INLINE fromTexture #-}
+
+  rectangleOutline color size = do
+    rend <- view rendererL
+    tex <- SDL.createTexture rend SDL.RGBA8888 SDL.TextureAccessTarget (fmap toEnum size)
+    SDL.textureBlendMode tex SDL.$= SDL.BlendAlphaBlend
+
+    bracket (SDL.get (SDL.rendererRenderTarget rend)) (\target -> SDL.rendererRenderTarget rend SDL.$= target) $ \_ -> do
+      SDL.rendererRenderTarget rend SDL.$= Just tex
+      SDL.rendererDrawColor rend SDL.$= color
+      SDL.drawRect rend (Just $ SDL.Rectangle 0 (fmap toEnum size))
+
+    return $ Figure tex (SDL.Rectangle 0 size) (SDL.Rectangle 0 size)
+  {-# INLINE rectangleOutline #-}
+
+  rectangleFilled color size = do
+    rend <- view rendererL
+    tex <- SDL.createTexture rend SDL.RGBA8888 SDL.TextureAccessTarget (fmap toEnum size)
+    SDL.textureBlendMode tex SDL.$= SDL.BlendAlphaBlend
+
+    bracket (SDL.get (SDL.rendererRenderTarget rend)) (\target -> SDL.rendererRenderTarget rend SDL.$= target) $ \_ -> do
+      SDL.rendererRenderTarget rend SDL.$= Just tex
+      SDL.rendererDrawColor rend SDL.$= color
+      SDL.fillRect rend (Just $ SDL.Rectangle 0 (fmap toEnum size))
+
+    return $ Figure tex (SDL.Rectangle 0 size) (SDL.Rectangle 0 size)
+  {-# INLINE rectangleFilled #-}
