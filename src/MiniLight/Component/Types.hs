@@ -1,5 +1,10 @@
 {-# LANGUAGE ExistentialQuantification #-}
-module MiniLight.Component.Types where
+module MiniLight.Component.Types (
+  ComponentUnit(..),
+  Component,
+  newComponent,
+  getComponentSize,
+) where
 
 import Control.Monad.Catch
 import Control.Monad.IO.Class
@@ -18,6 +23,9 @@ class ComponentUnit c where
   {-# INLINE draw #-}
 
 data Component = forall c. ComponentUnit c => Component { getComponent :: c }
+
+newComponent :: ComponentUnit c => c -> Component
+newComponent = Component
 
 getComponentSize
   :: (ComponentUnit c, HasLightEnv env, MonadIO m, MonadMask m)
