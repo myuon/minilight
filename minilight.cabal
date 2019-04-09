@@ -27,6 +27,7 @@ library
     MiniLight.Component.AnimationLayer
     MiniLight.Component.MessageEngine
     MiniLight.Component.MessageLayer
+    MiniLight.Component.Button
   -- other-modules:
   -- other-extensions:
   build-depends:
