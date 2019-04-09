@@ -26,6 +26,8 @@ instance ComponentUnit Button where
       textTexture comp
       ]
 
+  useCache _ = True
+
 data Config = Config {
   size :: Vect.V2 Int,
   label :: T.Text,
