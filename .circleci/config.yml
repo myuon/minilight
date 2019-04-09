@@ -1,0 +1,47 @@
+version: 2
+
+jobs:
+  build-8_6_3:
+    working_directory: ~/workspace
+    docker:
+      - image: haskell:8.6.3
+    steps:
+      - checkout
+      - run: cabal new-update
+      - restore_cache:
+          keys:
+            - cabal-index-{{ checksum "~/.cabal/packages/hackage.haskell.org/01-index.cache" }}-v1
+      - run: cabal new-build
+      - run: cabal new-test
+      - save_cache:
+          key: cabal-index-{{ checksum "~/.cabal/packages/hackage.haskell.org/01-index.cache" }}-v1
+          paths:
+            - ~/.cabal
+      - persist_to_workspace:
+          root: .
+          paths:
+            - dist-newstyle
+  build-mini-sequencer:
+    working_directory: ~/workspace
+    docker:
+      - image: haskell:8.6.3
+    steps:
+      - checkout
+      - run: cabal new-update
+      - restore_cache:
+          keys:
+            - cabal-index-{{ checksum "~/.cabal/packages/hackage.haskell.org/01-index.cache" }}-v1
+      - attach_workspace:
+          at: .
+      - run: cd examples/mini-sequencer && cabal new-build
+
+workflows:
+  version: 2
+
+  # When test has passed, tag a release
+  build_and_test:
+    jobs:
+      - build-test-8_6_3:
+      - build-mini-sequencer:
+          requires:
+            - build-test-8_6_3
