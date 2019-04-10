@@ -36,6 +36,20 @@ jobs:
       - attach_workspace:
           at: .
       - run: cd examples/mini-sequencer && cabal new-build
+  build-button-counter:
+    working_directory: ~/workspace
+    docker:
+      - image: haskell:8.6.3
+    steps:
+      - checkout
+      - run: apt update && apt install -y libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev
+      - run: cabal new-update
+      - restore_cache:
+          keys:
+            - cabal-index-{{ checksum "~/.cabal/packages/hackage.haskell.org/01-index.cache" }}-v1
+      - attach_workspace:
+          at: .
+      - run: cabal new-build button-counter
 
 workflows:
   version: 2
@@ -45,5 +59,8 @@ workflows:
     jobs:
       - build-8_6_3
       - build-mini-sequencer:
+          requires:
+            - build-8_6_3
+      - build-button-counter:
           requires:
             - build-8_6_3
