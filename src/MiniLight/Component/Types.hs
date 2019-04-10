@@ -4,10 +4,12 @@ module MiniLight.Component.Types (
   Component,
   newComponent,
   getComponentSize,
+  propagate,
 ) where
 
 import Control.Monad.Catch
 import Control.Monad.IO.Class
+import Data.IORef
 import MiniLight.Light
 import MiniLight.Event
 import MiniLight.Figure
@@ -32,7 +34,7 @@ class ComponentUnit c where
 data Component = forall c. ComponentUnit c => Component {
   component :: c,
   prev :: c,
-  cache :: [Figure]
+  cache :: IORef [Figure]
 }
 
 newComponent
@@ -41,7 +43,8 @@ newComponent
   -> LightT env m Component
 newComponent c = do
   figs <- figures c
-  return $ Component {component = c, prev = c, cache = figs}
+  ref  <- liftIO $ newIORef figs
+  return $ Component {component = c, prev = c, cache = ref}
 
 getComponentSize
   :: (ComponentUnit c, HasLightEnv env, MonadIO m, MonadMask m)
@@ -51,16 +54,22 @@ getComponentSize comp = do
   figs <- figures comp
   return $ foldl union (SDL.Rectangle (SDL.P 0) 0) $ map targetArea figs
 
+propagate :: Component -> Component
+propagate (Component comp _ cache) = Component comp comp cache
+
 instance ComponentUnit Component where
-  update (Component comp _ cache) = do
+  update (Component comp prev cache) = do
     comp' <- update comp
-    return $ Component comp' comp cache
+    return $ Component comp' prev cache
 
   figures (Component comp _ _) = figures comp
 
-  draw (Component comp prev cache) = liftMiniLight $ do
+  draw (Component comp prev ref) = liftMiniLight $ do
     if useCache prev comp
-      then renders cache
-      else renders =<< figures comp
+      then renders =<< liftIO (readIORef ref)
+      else do
+        figs <- figures comp
+        renders figs
+        liftIO $ writeIORef ref figs
 
-  onSignal ev (Component comp _ cache) = fmap (\comp' -> Component comp' comp cache) $ onSignal ev comp
+  onSignal ev (Component comp prev cache) = fmap (\comp' -> Component comp' prev cache) $ onSignal ev comp

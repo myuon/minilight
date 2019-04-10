@@ -1,6 +1,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RoleAnnotations #-}
 module MiniLight.Light (
+  MonadIO(..),
+
   HasLightEnv (..),
   LightT (..),
   LightEnv (..),
@@ -16,6 +18,7 @@ module MiniLight.Light (
   withFont
 ) where
 
+import Control.Monad.IO.Class
 import Control.Monad.Catch
 import Control.Monad.Reader
 import Data.Hashable (Hashable(..))

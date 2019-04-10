@@ -100,6 +100,11 @@ runMainloop conf initial loop = do
       comp <- liftIO $ VM.read (components loopState) i
       draw comp
 
+    -- state propagation
+    forM_ [0 .. VM.length (components loopState) - 1] $ \i -> do
+      comp <- liftIO $ VM.read (components loopState) i
+      liftIO $ VM.write (components loopState) i (propagate comp)
+
     forM_ [0 .. VM.length (components loopState) - 1] $ \i -> do
       comp  <- liftIO $ VM.read (components loopState) i
       comp' <- update comp
