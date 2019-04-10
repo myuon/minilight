@@ -9,6 +9,7 @@ module MiniLight.Component.Types (
 import Control.Monad.Catch
 import Control.Monad.IO.Class
 import MiniLight.Light
+import MiniLight.Event
 import MiniLight.Figure
 import qualified SDL
 
@@ -24,6 +25,9 @@ class ComponentUnit c where
 
   useCache :: c -> Bool
   useCache _ = False
+
+  onSignal :: (HasLightEnv env, MonadIO m, MonadMask m) => Event -> c -> LightT env m c
+  onSignal _ = return
 
 data Component = forall c. ComponentUnit c => Component {
   component :: c,
@@ -57,3 +61,5 @@ instance ComponentUnit Component where
     if useCache comp
       then renders cache
       else renders =<< figures comp
+
+  onSignal ev (Component comp cache) = fmap (\comp' -> Component comp' cache) $ onSignal ev comp

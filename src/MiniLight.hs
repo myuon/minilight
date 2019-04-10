@@ -1,6 +1,7 @@
 module MiniLight (
-  module MiniLight.Figure,
   module MiniLight.Light,
+  module MiniLight.Event,
+  module MiniLight.Figure,
   module MiniLight.Component,
 
   runLightT,
@@ -18,14 +19,16 @@ import Control.Monad.Catch
 import Control.Monad.Reader
 import qualified Data.Aeson as Aeson
 import Data.Hashable (Hashable(..))
+import Data.Foldable (foldlM)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
 import qualified Data.Vector.Mutable as VM
 import Graphics.Text.TrueType
 import Lens.Micro.Mtl
 import MiniLight.Component
-import MiniLight.Light
+import MiniLight.Event
 import MiniLight.Figure
+import MiniLight.Light
 import qualified SDL
 import qualified SDL.Font
 
@@ -106,6 +109,11 @@ runMainloop conf initial loop = do
     liftIO $ threadDelay (100000 `div` 60)
     events <- SDL.pollEvents
     keys   <- SDL.getKeyboardState
+
+    forM_ [0 .. VM.length (components loopState) - 1] $ \i -> do
+      comp  <- liftIO $ VM.read (components loopState) i
+      comp' <- foldlM (\comp ev -> onSignal (RawEvent ev) comp) comp events
+      liftIO $ VM.write (components loopState) i comp'
 
     let
       specifiedKeys = HM.mapWithKey

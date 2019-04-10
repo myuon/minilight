@@ -20,6 +20,7 @@ library
     MiniLight
     MiniLight.Figure
     MiniLight.Light
+    MiniLight.Event
     MiniLight.Component
     MiniLight.Component.Types
     MiniLight.Component.Loader
@@ -44,6 +45,7 @@ library
     sdl2,
     sdl2-ttf,
     sdl2-image,
+    template-haskell,
     text,
     trifecta,
     unordered-containers,
@@ -55,6 +57,7 @@ library
   default-extensions: 
     FlexibleContexts
     FlexibleInstances
+    GADTs
     OverloadedStrings
     MultiParamTypeClasses
     RankNTypes
