@@ -79,3 +79,13 @@ test-suite tests
     yaml,
   hs-source-dirs:      test
   default-language:    Haskell2010
+
+executable button-counter
+  hs-source-dirs: examples
+  main-is: button-counter.hs
+  build-depends:
+    base,
+    minilight,
+    sdl2,
+    sdl2-ttf,
+    text,
