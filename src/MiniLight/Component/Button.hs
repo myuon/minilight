@@ -1,17 +1,19 @@
 module MiniLight.Component.Button where
 
+import Control.Monad.IO.Class
 import Data.Aeson
 import qualified Data.Text as T
 import Data.Word (Word8)
 import MiniLight.Component.Types
+import MiniLight.Event
 import MiniLight.Figure
 import MiniLight.Light
+import qualified SDL
 import qualified SDL.Font
 import qualified SDL.Vect as Vect
 
 data Button = Button {
   font :: SDL.Font.Font,
-  textTexture :: Figure,
   config :: Config
 }
 
@@ -19,14 +21,20 @@ instance ComponentUnit Button where
   update = return
 
   figures comp = do
-    base <- liftMiniLight $ rectangleFilled (Vect.V4 200 200 200 255) (getFigureSize $ textTexture comp)
+    textTexture <- liftMiniLight $ text (font comp) (color (config comp)) $ label (config comp)
+    base <- liftMiniLight $ rectangleFilled (Vect.V4 200 200 200 255) (getFigureSize textTexture)
 
     return [
       base,
-      textTexture comp
+      textTexture
       ]
 
   useCache _ = True
+
+  onSignal (RawEvent (SDL.Event _ (SDL.MouseButtonEvent (SDL.MouseButtonEventData _ SDL.Released _ _ _ _)))) comp = do
+    liftIO $ print "hey!"
+    return comp
+  onSignal _ comp = return comp
 
 data Config = Config {
   size :: Vect.V2 Int,
@@ -53,7 +61,5 @@ instance FromJSON Config where
 
 new :: Config -> MiniLight Button
 new conf = do
-  font        <- loadFont (fontConf conf) (fontSize conf)
-  textTexture <- text font (color conf) $ label conf
-
-  return $ Button {font = font, textTexture = textTexture, config = conf}
+  font <- loadFont (fontConf conf) (fontSize conf)
+  return $ Button {font = font, config = conf}
