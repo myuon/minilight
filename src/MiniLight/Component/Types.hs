@@ -23,14 +23,15 @@ class ComponentUnit c where
   draw comp = liftMiniLight . renders =<< figures comp
   {-# INLINE draw #-}
 
-  useCache :: c -> Bool
-  useCache _ = False
+  useCache :: c -> c -> Bool
+  useCache _ _ = False
 
   onSignal :: (HasLightEnv env, MonadIO m, MonadMask m) => Event -> c -> LightT env m c
   onSignal _ = return
 
 data Component = forall c. ComponentUnit c => Component {
   component :: c,
+  prev :: c,
   cache :: [Figure]
 }
 
@@ -40,7 +41,7 @@ newComponent
   -> LightT env m Component
 newComponent c = do
   figs <- figures c
-  return $ Component {component = c, cache = figs}
+  return $ Component {component = c, prev = c, cache = figs}
 
 getComponentSize
   :: (ComponentUnit c, HasLightEnv env, MonadIO m, MonadMask m)
@@ -51,15 +52,15 @@ getComponentSize comp = do
   return $ foldl union (SDL.Rectangle (SDL.P 0) 0) $ map targetArea figs
 
 instance ComponentUnit Component where
-  update (Component comp cache) = do
+  update (Component comp _ cache) = do
     comp' <- update comp
-    return $ Component comp' cache
+    return $ Component comp' comp cache
 
-  figures (Component comp _) = figures comp
+  figures (Component comp _ _) = figures comp
 
-  draw (Component comp cache) = liftMiniLight $ do
-    if useCache comp
+  draw (Component comp prev cache) = liftMiniLight $ do
+    if useCache prev comp
       then renders cache
       else renders =<< figures comp
 
-  onSignal ev (Component comp cache) = fmap (\comp' -> Component comp' cache) $ onSignal ev comp
+  onSignal ev (Component comp _ cache) = fmap (\comp' -> Component comp' comp cache) $ onSignal ev comp

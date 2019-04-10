@@ -16,17 +16,17 @@ instance ComponentUnit Button where
   figures comp = do
     textTexture <- liftMiniLight $ text (font comp) (Vect.V4 255 255 255 255) $
       if counter comp == 0 then "Click me!" else "You've clicked " `T.append` T.pack (show (counter comp)) `T.append` " times!"
-    base <- liftMiniLight $ rectangleFilled (Vect.V4 200 200 200 255) (getFigureSize textTexture)
+    base <- liftMiniLight $ rectangleFilled (Vect.V4 60 60 60 255) (getFigureSize textTexture)
 
     return [
       base,
       textTexture
       ]
 
-  useCache _ = True
+  useCache prev now = counter prev == counter now
 
   onSignal (RawEvent (SDL.Event _ (SDL.MouseButtonEvent (SDL.MouseButtonEventData _ SDL.Released _ _ _ _)))) comp = do
-    return comp
+    return $ comp { counter = counter comp + 1 }
   onSignal _ comp = return comp
 
 new :: MiniLight Button
@@ -37,4 +37,9 @@ new = do
 main :: IO ()
 main = do
   runLightT id $ do
-    runMainloop (defConfig { appConfigFile = Nothing }) () (\_ -> return)
+    button <- newComponent =<< new
+
+    runMainloop
+      (defConfig { appConfigFile = Nothing, additionalComponents = [button] })
+      ()
+      (\_ -> return)

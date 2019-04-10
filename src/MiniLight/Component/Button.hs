@@ -29,7 +29,7 @@ instance ComponentUnit Button where
       textTexture
       ]
 
-  useCache _ = True
+  useCache _ _ = True
 
   onSignal (RawEvent (SDL.Event _ (SDL.MouseButtonEvent (SDL.MouseButtonEventData _ SDL.Released _ _ _ _)))) comp = do
     liftIO $ print "hey!"

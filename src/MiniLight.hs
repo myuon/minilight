@@ -51,14 +51,16 @@ runLightT init prog = withSDL $ withWindow $ \window -> do
 data LoopConfig = LoopConfig {
   watchKeys :: Maybe [SDL.Scancode],
   appConfigFile :: Maybe FilePath,
-  componentResolver :: T.Text -> Aeson.Value -> MiniLight Component
+  componentResolver :: T.Text -> Aeson.Value -> MiniLight Component,
+  additionalComponents :: [Component]
 }
 
 defConfig :: LoopConfig
 defConfig = LoopConfig
-  { watchKeys         = Nothing
-  , appConfigFile     = Nothing
-  , componentResolver = defResolver
+  { watchKeys            = Nothing
+  , appConfigFile        = Nothing
+  , componentResolver    = defResolver
+  , additionalComponents = []
   }
 
 data LoopState = LoopState {
@@ -80,10 +82,11 @@ runMainloop
   -> (LoopState -> s -> LightT env m s)  -- ^ loop
   -> LightT env m ()
 runMainloop conf initial loop = do
-  components <- liftMiniLight $ fromList =<< maybe
-    (return [])
-    (flip loadAppConfig (componentResolver conf))
-    (appConfigFile conf)
+  components <-
+    liftMiniLight $ fromList . (++ additionalComponents conf) =<< maybe
+      (return [])
+      (flip loadAppConfig (componentResolver conf))
+      (appConfigFile conf)
 
   go (LoopState {keyStates = HM.empty, events = [], components = components})
      initial
