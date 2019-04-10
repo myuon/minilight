@@ -35,6 +35,10 @@ getFigureSize :: Figure -> Vect.V2 Int
 getFigureSize fig = (\(SDL.Rectangle _ size) -> size) $ targetArea fig
 {-# INLINE getFigureSize #-}
 
+freeFigure :: MonadIO m => Figure -> m ()
+freeFigure = SDL.destroyTexture . texture
+{-# INLINE freeFigure #-}
+
 union :: SDL.Rectangle Int -> SDL.Rectangle Int -> SDL.Rectangle Int
 union x@(SDL.Rectangle (SDL.P c1) s1) y@(SDL.Rectangle (SDL.P c2) s2)
   | c1 <= c2 = SDL.Rectangle (SDL.P (fmap (2 *) c1 - s1 + fmap (2 *) c2 + s2))

@@ -68,6 +68,9 @@ instance ComponentUnit Component where
     if useCache prev comp
       then renders =<< liftIO (readIORef ref)
       else do
+        figs <- liftIO (readIORef ref)
+        mapM_ freeFigure figs
+
         figs <- figures comp
         renders figs
         liftIO $ writeIORef ref figs
