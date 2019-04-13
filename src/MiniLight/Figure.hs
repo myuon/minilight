@@ -56,7 +56,7 @@ render fig = do
              (texture fig)
              (Just (fmap toEnum $ sourceArea fig))
              (Just (fmap toEnum $ targetArea fig))
-             (realToFrac $ rotation fig)
+             (realToFrac (rotation fig) * 180 / pi)
              Nothing
              (Vect.V2 False False)
 {-# INLINE render #-}
