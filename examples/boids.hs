@@ -84,8 +84,7 @@ mainloop = do
             neighbors
 
       -- alignment
-      let dir    = average $ V.map velocity neighbors
-      let v2     = dir - velocity object
+      let v2     = average $ V.map velocity neighbors
 
       -- cohesion
       let center = average $ V.map position neighbors
