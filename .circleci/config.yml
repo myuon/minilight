@@ -36,7 +36,7 @@ jobs:
       - attach_workspace:
           at: .
       - run: cd examples/mini-sequencer && cabal new-build
-  build-button-counter:
+  build-examples:
     working_directory: ~/workspace
     docker:
       - image: haskell:8.6.3
@@ -50,6 +50,7 @@ jobs:
       - attach_workspace:
           at: .
       - run: cabal new-build button-counter
+      - run: cabal new-build boids
 
 workflows:
   version: 2
@@ -61,6 +62,6 @@ workflows:
       - build-mini-sequencer:
           requires:
             - build-8_6_3
-      - build-button-counter:
+      - build-examples:
           requires:
             - build-8_6_3
