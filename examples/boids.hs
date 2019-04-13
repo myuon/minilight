@@ -38,7 +38,10 @@ mainloop = do
 
   lift $ (renders =<<) $ forM [0 .. VM.length objects - 1] $ \i -> do
     object <- liftIO $ VM.read objects i
-    return $ translate (fmap floor $ position object) pic
+    return
+      $ translate (fmap floor $ position object)
+      $ rotate (let Vect.V2 x y = velocity object in pi - atan2 x y)
+      $ pic
 
   lift $ forM_ [0 .. VM.length objects - 1] $ \i -> do
     object <- liftIO $ VM.read objects i
