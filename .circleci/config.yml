@@ -7,7 +7,7 @@ jobs:
       - image: haskell:8.6.3
     steps:
       - checkout
-      - run: apt update && apt install -y libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev
+      - run: apt update && apt install -y libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-gfx-dev
       - run: cabal new-update
       - restore_cache:
           keys:
@@ -28,7 +28,7 @@ jobs:
       - image: haskell:8.6.3
     steps:
       - checkout
-      - run: apt update && apt install -y libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev
+      - run: apt update && apt install -y libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libsdl2-gfx-dev
       - run: cabal new-update
       - restore_cache:
           keys:
@@ -42,7 +42,7 @@ jobs:
       - image: haskell:8.6.3
     steps:
       - checkout
-      - run: apt update && apt install -y libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev
+      - run: apt update && apt install -y libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libsdl2-gfx-dev
       - run: cabal new-update
       - restore_cache:
           keys:
