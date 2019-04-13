@@ -10,10 +10,12 @@ import qualified Data.Text as T
 import Data.Word (Word8)
 import Lens.Micro
 import Lens.Micro.Mtl
+import Linear (_x, _y)
 import MiniLight.Light
 import qualified SDL
 import qualified SDL.Font
 import qualified SDL.Image
+import qualified SDL.Primitive as Gfx
 import qualified SDL.Vect as Vect
 
 centerL :: Lens' (SDL.Rectangle a) (Vect.V2 a)
@@ -80,6 +82,7 @@ class Rendering r m | r -> m where
   fromTexture :: SDL.Texture -> m r
   rectangleOutline :: Vect.V4 Word8 -> Vect.V2 Int -> m r
   rectangleFilled :: Vect.V4 Word8 -> Vect.V2 Int -> m r
+  triangleOutline :: Vect.V4 Word8 -> Vect.V2 Int -> m r
 
 instance Rendering Figure MiniLight where
   translate v fig =
@@ -149,3 +152,23 @@ instance Rendering Figure MiniLight where
 
     return $ Figure tex (SDL.Rectangle 0 size) (SDL.Rectangle 0 size)
   {-# INLINE rectangleFilled #-}
+
+  triangleOutline color size = do
+    rend <- view rendererL
+    tex <- SDL.createTexture rend SDL.RGBA8888 SDL.TextureAccessTarget (fmap toEnum size)
+    SDL.textureBlendMode tex SDL.$= SDL.BlendAlphaBlend
+
+    bracket (SDL.get (SDL.rendererRenderTarget rend)) (\target -> SDL.rendererRenderTarget rend SDL.$= target) $ \_ -> do
+      SDL.rendererRenderTarget rend SDL.$= Just tex
+      SDL.rendererDrawColor rend SDL.$= color
+
+      let size' = fmap toEnum size
+      Gfx.smoothTriangle
+        rend
+        (Vect.V2 (size' ^. _x `div` 2) 0)
+        (Vect.V2 (size' ^. _x - 1) (size' ^. _y - 1))
+        (Vect.V2 0 (size' ^. _y - 1))
+        color
+
+    return $ Figure tex (SDL.Rectangle 0 size) (SDL.Rectangle 0 size)
+  {-# INLINE triangleOutline #-}
