@@ -30,7 +30,8 @@ sizeL = lens (\(SDL.Rectangle _ size) -> size)
 data Figure = Figure {
   texture :: SDL.Texture,
   sourceArea :: SDL.Rectangle Int,
-  targetArea :: SDL.Rectangle Int
+  targetArea :: SDL.Rectangle Int,
+  rotation :: Double
 }
 
 getFigureSize :: Figure -> Vect.V2 Int
@@ -51,10 +52,13 @@ render :: (HasLightEnv env, MonadIO m, MonadMask m) => Figure -> LightT env m ()
 render fig = do
   renderer <- view rendererL
 
-  SDL.copy renderer
-           (texture fig)
-           (Just (fmap toEnum $ sourceArea fig))
-           (Just (fmap toEnum $ targetArea fig))
+  SDL.copyEx renderer
+             (texture fig)
+             (Just (fmap toEnum $ sourceArea fig))
+             (Just (fmap toEnum $ targetArea fig))
+             (realToFrac $ rotation fig)
+             Nothing
+             (Vect.V2 False False)
 {-# INLINE render #-}
 
 renders
@@ -76,6 +80,7 @@ withBlendedText font text color =
 class Rendering r m | r -> m where
   translate :: Vect.V2 Int -> r -> r
   clip :: SDL.Rectangle Int -> r -> r
+  rotate :: Double -> r -> r
 
   text :: SDL.Font.Font -> Vect.V4 Word8 -> T.Text -> m r
   picture :: FilePath -> m r
@@ -99,6 +104,9 @@ instance Rendering Figure MiniLight where
     in fig { sourceArea = sourceArea', targetArea = targetArea' }
   {-# INLINE clip #-}
 
+  rotate ang fig = fig { rotation = ang }
+  {-# INLINE rotate #-}
+
   text font color txt = do
     renderer <- view rendererL
 
@@ -107,7 +115,7 @@ instance Rendering Figure MiniLight where
       tinfo <- SDL.queryTexture texture
       let rect = fmap fromEnum $ SDL.Rectangle (SDL.P 0) (Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo))
 
-      return $ Figure texture rect rect
+      return $ Figure texture rect rect 0
   {-# INLINE text #-}
 
   picture filepath = do
@@ -117,14 +125,14 @@ instance Rendering Figure MiniLight where
     tinfo <- SDL.queryTexture texture
     let rect = fmap fromEnum $ SDL.Rectangle (SDL.P 0) (Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo))
 
-    return $ Figure texture rect rect
+    return $ Figure texture rect rect 0
   {-# INLINE picture #-}
 
   fromTexture tex = do
     tinfo <- SDL.queryTexture tex
     let size = fmap fromEnum $ Vect.V2 (SDL.textureWidth tinfo) (SDL.textureHeight tinfo)
 
-    return $ Figure tex (SDL.Rectangle 0 size) (SDL.Rectangle 0 size)
+    return $ Figure tex (SDL.Rectangle 0 size) (SDL.Rectangle 0 size) 0
   {-# INLINE fromTexture #-}
 
   rectangleOutline color size = do
@@ -137,7 +145,7 @@ instance Rendering Figure MiniLight where
       SDL.rendererDrawColor rend SDL.$= color
       SDL.drawRect rend (Just $ SDL.Rectangle 0 (fmap toEnum size))
 
-    return $ Figure tex (SDL.Rectangle 0 size) (SDL.Rectangle 0 size)
+    return $ Figure tex (SDL.Rectangle 0 size) (SDL.Rectangle 0 size) 0
   {-# INLINE rectangleOutline #-}
 
   rectangleFilled color size = do
@@ -150,7 +158,7 @@ instance Rendering Figure MiniLight where
       SDL.rendererDrawColor rend SDL.$= color
       SDL.fillRect rend (Just $ SDL.Rectangle 0 (fmap toEnum size))
 
-    return $ Figure tex (SDL.Rectangle 0 size) (SDL.Rectangle 0 size)
+    return $ Figure tex (SDL.Rectangle 0 size) (SDL.Rectangle 0 size) 0
   {-# INLINE rectangleFilled #-}
 
   triangleOutline color size = do
@@ -170,5 +178,5 @@ instance Rendering Figure MiniLight where
         (Vect.V2 0 (size' ^. _y - 1))
         color
 
-    return $ Figure tex (SDL.Rectangle 0 size) (SDL.Rectangle 0 size)
+    return $ Figure tex (SDL.Rectangle 0 size) (SDL.Rectangle 0 size) 0
   {-# INLINE triangleOutline #-}
