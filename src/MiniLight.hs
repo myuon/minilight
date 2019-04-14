@@ -1,3 +1,5 @@
+{-| MiniLight module exports all basic concepts and oprations except for concrete components.
+-}
 module MiniLight (
   module MiniLight.Light,
   module MiniLight.Event,
@@ -9,9 +11,6 @@ module MiniLight (
   defConfig,
   LoopState (..),
   runMainloop,
-
-  withSDL,
-  withWindow
 ) where
 
 import Control.Concurrent (threadDelay)
@@ -35,9 +34,10 @@ import qualified SDL.Font
 instance Hashable SDL.Scancode where
   hashWithSalt n sc = hashWithSalt n (SDL.unwrapScancode sc)
 
+-- | Run a Light monad.
 runLightT
   :: (HasLightEnv env, MonadIO m, MonadMask m)
-  => (LightEnv -> env)
+  => (LightEnv -> env)  -- ^ construct @env@ value with initial 'LightEnv'
   -> LightT env m a
   -> m a
 runLightT init prog = withSDL $ withWindow $ \window -> do
@@ -48,13 +48,15 @@ runLightT init prog = withSDL $ withWindow $ \window -> do
     , fontCache = fc
     }
 
+-- | Use 'defConfig' for a default setting.
 data LoopConfig = LoopConfig {
-  watchKeys :: Maybe [SDL.Scancode],
-  appConfigFile :: Maybe FilePath,
-  componentResolver :: T.Text -> Aeson.Value -> MiniLight Component,
-  additionalComponents :: [Component]
+  watchKeys :: Maybe [SDL.Scancode],  -- ^ Set @Nothing@ if all keys should be watched. See also 'LoopState'.
+  appConfigFile :: Maybe FilePath,  -- ^ Specify a yaml file which describes component settings. See 'MiniLight.Component.Loader' for the yaml syntax.
+  componentResolver :: T.Text -> Aeson.Value -> MiniLight Component,  -- ^ Your custom mappings between a component name and its type.
+  additionalComponents :: [Component]  -- ^ The components here would be added during the initialization.
 }
 
+-- | Default configurations for the mainloop.
 defConfig :: LoopConfig
 defConfig = LoopConfig
   { watchKeys            = Nothing
@@ -63,10 +65,11 @@ defConfig = LoopConfig
   , additionalComponents = []
   }
 
+-- | LoopState value would be passed to user side in a mainloop.
 data LoopState = LoopState {
-  keyStates :: HM.HashMap SDL.Scancode Int,
-  events :: [SDL.Event],
-  components :: VM.IOVector Component
+  keyStates :: HM.HashMap SDL.Scancode Int,  -- ^ Contains the number of frames that a specific keys are continuously pressing.
+  events :: [SDL.Event],  -- ^ Occurred events since the last frame.
+  components :: VM.IOVector Component  -- ^ Current components managed in a mainloop. Be careful to modify a component destructively.
 }
 
 fromList :: MonadIO m => [a] -> m (VM.IOVector a)
@@ -75,11 +78,15 @@ fromList xs = liftIO $ do
   forM_ (zip [0 ..] xs) $ uncurry (VM.write vec)
   return vec
 
+-- | Run a mainloop.
+-- In a mainloop, components and events are managed.
+--
+-- Components in a mainloop: draw ~ update ~ (user-defined function) ~ event handling
 runMainloop
   :: (HasLightEnv env, MonadIO m, MonadMask m)
   => LoopConfig  -- ^ loop config
   -> s  -- ^ initial state
-  -> (LoopState -> s -> LightT env m s)  -- ^ loop
+  -> (LoopState -> s -> LightT env m s)  -- ^ a function called in every loop
   -> LightT env m ()
 runMainloop conf initial loop = do
   components <-
