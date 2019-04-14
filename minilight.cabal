@@ -3,9 +3,17 @@ cabal-version:       2.4
 --   For further documentation, see http://haskell.org/cabal/users-guide/
 
 name:                minilight
-version:             0.1.0.0
+version:             0.1.0
 synopsis:            A SDL2-based graphics library, batteries-included.
--- description:
+description:
+  This package provides the wheel for a graphcal application or a game.
+  .
+  Basic concepts and features:
+  - Figure: convenient SDL texture, once created, it can be translated or rotated during rendering.
+  - Component: a reusable widget with event handlers, its figures can also be cached.
+  - dynamic component loading: view components can be constructed by an external yaml file.
+  - built-in components: some common components are predefined. You can define a new component by yourself.
+
 -- bug-reports:
 license:             MIT
 license-file:        LICENSE
@@ -14,6 +22,10 @@ maintainer:          ioi.joi.koi.loi@gmail.com
 -- copyright:
 category:            Graphics
 extra-source-files:  CHANGELOG.md
+
+source-repository head
+  type:     git
+  location: https://github.com/myuon/minilight
 
 library
   exposed-modules:
@@ -64,7 +76,7 @@ library
     MultiParamTypeClasses
     RankNTypes
     Strict
-  ghc-options: -O2 -Wall -Wno-name-shadowing
+  ghc-options: -Wall -Wno-name-shadowing
 
 test-suite tests
   type: exitcode-stdio-1.0
@@ -92,7 +104,7 @@ executable button-counter
     sdl2,
     sdl2-ttf,
     text,
-  ghc-options: -O2 -Wall -Wno-name-shadowing
+  ghc-options: -Wall -Wno-name-shadowing
 
 executable boids
   hs-source-dirs: examples
@@ -109,4 +121,4 @@ executable boids
     sdl2-ttf,
     text,
     vector,
-  ghc-options: -O2 -Wall -Wno-name-shadowing
+  ghc-options: -Wall -Wno-name-shadowing
