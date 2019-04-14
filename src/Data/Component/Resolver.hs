@@ -1,6 +1,8 @@
 {-| This module provides the default resolver for pre-defined components.
 -}
-module Data.Component.Default where
+module Data.Component.Resolver (
+  resolver,
+) where
 
 import qualified Data.Aeson as Aeson
 import qualified Data.Text as T
@@ -17,8 +19,8 @@ foldResult f g r = case r of
   Aeson.Success a   -> g a
 
 -- | Pre-defined resolver supports all components in this library.
-defResolver :: Resolver
-defResolver name props = case name of
+resolver :: Resolver
+resolver name props = case name of
   "animation-layer" -> newComponent
     =<< AnimationLayer.new (foldResult error id $ Aeson.fromJSON props)
   "button" ->
