@@ -29,6 +29,8 @@ instance ComponentUnit Button where
     return $ comp { counter = counter comp + 1 }
   onSignal _ comp = return comp
 
+  beforeClearCache _ figs = mapM_ freeFigure figs
+
 new :: MiniLight Button
 new = do
   font <- loadFont (FontDescriptor "IPAGothic" (FontStyle False False)) 22

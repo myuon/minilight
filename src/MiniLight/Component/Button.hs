@@ -36,6 +36,8 @@ instance ComponentUnit Button where
     return comp
   onSignal _ comp = return comp
 
+  beforeClearCache _ figs = mapM_ freeFigure figs
+
 data Config = Config {
   size :: Vect.V2 Int,
   label :: T.Text,

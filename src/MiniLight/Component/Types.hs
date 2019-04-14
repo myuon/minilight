@@ -30,6 +30,10 @@ class ComponentUnit c where
   draw comp = liftMiniLight . renders =<< figures comp
   {-# INLINE draw #-}
 
+  -- | Event handlers
+  onSignal :: (HasLightEnv env, MonadIO m, MonadMask m) => Event -> c -> LightT env m c
+  onSignal _ = return
+
   -- | Return @True@ if a cache stored in the previous frame should be used.
   useCache
     :: c  -- ^ A model value in the previous frame
@@ -37,9 +41,12 @@ class ComponentUnit c where
     -> Bool
   useCache _ _ = False
 
-  -- | Event handlers
-  onSignal :: (HasLightEnv env, MonadIO m, MonadMask m) => Event -> c -> LightT env m c
-  onSignal _ = return
+  -- | To be called just before clearing caches.
+  -- If you want to destroy cached textures for memory efficiency, override this method.
+  --
+  -- __NB__: Freeing SDL textures and figures are not performed automatically. You must call 'freeFigure' at your own risk.
+  beforeClearCache :: (HasLightEnv env, MonadIO m, MonadMask m) => c -> [Figure] -> LightT env m ()
+  beforeClearCache _ _ = return ()
 
 -- | A wrapper for 'ComponentUnit' instances.
 data Component = forall c. ComponentUnit c => Component {
@@ -83,7 +90,7 @@ instance ComponentUnit Component where
       then renders =<< liftIO (readIORef ref)
       else do
         figs <- liftIO (readIORef ref)
-        mapM_ freeFigure figs
+        beforeClearCache comp figs
 
         figs <- figures comp
         renders figs
