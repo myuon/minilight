@@ -35,18 +35,11 @@ instance Hashable SDL.Scancode where
   hashWithSalt n sc = hashWithSalt n (SDL.unwrapScancode sc)
 
 -- | Run a Light monad.
-runLightT
-  :: (HasLightEnv env, MonadIO m, MonadMask m)
-  => (LightEnv -> env)  -- ^ construct @env@ value with initial 'LightEnv'
-  -> LightT env m a
-  -> m a
-runLightT init prog = withSDL $ withWindow $ \window -> do
+runLightT :: (MonadIO m, MonadMask m) => LightT LightEnv m a -> m a
+runLightT prog = withSDL $ withWindow $ \window -> do
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
   fc       <- loadFontCache
-  runReaderT (runLightT' prog) $ init $ LightEnv
-    { renderer  = renderer
-    , fontCache = fc
-    }
+  runReaderT (runLightT' prog) $ LightEnv {renderer = renderer, fontCache = fc}
 
 -- | Use 'defConfig' for a default setting.
 data LoopConfig = LoopConfig {

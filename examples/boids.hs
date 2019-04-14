@@ -109,7 +109,7 @@ main = do
     )
     vec
 
-  runLightT id $ do
+  runLightT $ do
     pic <- triangleOutline (Vect.V4 100 100 100 255) (Vect.V2 10 20)
 
     runMainloop

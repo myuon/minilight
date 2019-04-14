@@ -59,7 +59,7 @@ main = do
     SDL.Mixer.setVolume 10 sound
 --    SDL.Mixer.play sound
 
-    runLightT id $ do
+    runLightT $ do
       runMainloop (defConfig { appConfigFile = Just "resources/app.yml" })
                   (Game {sound = sound})
                   (\_ -> return)

@@ -38,7 +38,7 @@ new = do
 
 main :: IO ()
 main = do
-  runLightT id $ do
+  runLightT $ do
     button <- newComponent =<< new
 
     runMainloop
