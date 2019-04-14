@@ -9,6 +9,7 @@ description:
   This package provides the wheel for a graphcal application or a game.
   .
   Basic concepts and features:
+  .
   - Figure: convenient SDL texture, once created, it can be translated or rotated during rendering.
   - Component: a reusable widget with event handlers, its figures can also be cached.
   - dynamic component loading: view components can be constructed by an external yaml file.

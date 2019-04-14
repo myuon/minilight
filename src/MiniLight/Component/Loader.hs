@@ -30,10 +30,11 @@ data AppConfig = AppConfig {
 
 instance FromJSON AppConfig
 
+-- | Load an config file and construct components.
 loadAppConfig
   :: (HasLightEnv env, MonadIO m)
-  => FilePath
-  -> (T.Text -> Value -> LightT env m Component)
+  => FilePath  -- ^ Filepath to the yaml file.
+  -> (T.Text -> Value -> LightT env m Component)  -- ^ Specify any resolver.
   -> LightT env m [Component]
 loadAppConfig path mapper = do
   conf <- liftIO $ (\(Data.Aeson.Success a) -> a) . fromJSON . resolve . either (error . show) id <$> decodeFileEither path

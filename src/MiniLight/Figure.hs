@@ -2,6 +2,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+-- | This module provides many convenient operations for textures.
 module MiniLight.Figure where
 
 import Control.Monad.Catch
@@ -18,15 +19,18 @@ import qualified SDL.Image
 import qualified SDL.Primitive as Gfx
 import qualified SDL.Vect as Vect
 
+-- | Lens for the center of a rectangle.
 centerL :: Lens' (SDL.Rectangle a) (Vect.V2 a)
 centerL = lens
   (\(SDL.Rectangle (SDL.P center) _) -> center)
   (\(SDL.Rectangle _ size) center' -> SDL.Rectangle (SDL.P center') size)
 
+-- | Lens for the size of a rectangle.
 sizeL :: Lens' (SDL.Rectangle a) (Vect.V2 a)
 sizeL = lens (\(SDL.Rectangle _ size) -> size)
              (\(SDL.Rectangle center _) size' -> SDL.Rectangle center size')
 
+-- | Figure type carries a texture, sizing information and rotation information.
 data Figure = Figure {
   texture :: SDL.Texture,
   sourceArea :: SDL.Rectangle Int,
@@ -48,6 +52,7 @@ union x@(SDL.Rectangle (SDL.P c1) s1) y@(SDL.Rectangle (SDL.P c2) s2)
                              (c2 - c1 + fmap (`div` 2) (s1 + s2))
   | otherwise = union y x
 
+-- | Render a figure.
 render :: (HasLightEnv env, MonadIO m, MonadMask m) => Figure -> LightT env m ()
 render fig = do
   renderer <- view rendererL
@@ -61,6 +66,7 @@ render fig = do
              (Vect.V2 False False)
 {-# INLINE render #-}
 
+-- | Render figures.
 renders
   :: (HasLightEnv env, MonadIO m, MonadMask m) => [Figure] -> LightT env m ()
 renders = mapM_ render
@@ -77,17 +83,43 @@ withBlendedText font text color =
   bracket (SDL.Font.blended font color text) SDL.freeSurface
 {-# INLINE withBlendedText #-}
 
+-- | Rendering typeclass provides basic operations for figures.
 class Rendering r m | r -> m where
+  -- | Change the place to be rendered.
   translate :: Vect.V2 Int -> r -> r
+
+  -- | Specify some area and clip the figure into the region.
   clip :: SDL.Rectangle Int -> r -> r
+
+  -- | Rotate a figure.
   rotate :: Double -> r -> r
 
+  -- | Create a text texture. __Be careful__: this is a slow operation, use cache as long as you can.
   text :: SDL.Font.Font -> Vect.V4 Word8 -> T.Text -> m r
+
+  -- | Create a texture from a png file. __Be careful__: this is a slow operation, use cache as long as you can.
   picture :: FilePath -> m r
+
+  -- | Create a texture from a raw SDL texture.
   fromTexture :: SDL.Texture -> m r
-  rectangleOutline :: Vect.V4 Word8 -> Vect.V2 Int -> m r
-  rectangleFilled :: Vect.V4 Word8 -> Vect.V2 Int -> m r
-  triangleOutline :: Vect.V4 Word8 -> Vect.V2 Int -> m r
+
+  -- | Create an outlined rectangle. __Be careful__: this is a slow operation, use cache as long as you can.
+  rectangleOutline
+    :: Vect.V4 Word8  -- ^ Stroke color
+    -> Vect.V2 Int  -- ^ Size
+    -> m r
+
+  -- | Create a filled texture. __Be careful__: this is a slow operation, use cache as long as you can.
+  rectangleFilled
+    :: Vect.V4 Word8  -- ^ Filling color
+    -> Vect.V2 Int  -- ^ Size
+    -> m r
+
+  -- | Create an outlined triangle. __Be careful__: this is a slow operation, use cache as long as you can.
+  triangleOutline
+    :: Vect.V4 Word8  -- ^ Stroke color
+    -> Vect.V2 Int  -- ^ Size
+    -> m r
 
 instance Rendering Figure MiniLight where
   translate v fig =

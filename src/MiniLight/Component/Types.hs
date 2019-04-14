@@ -15,28 +15,40 @@ import MiniLight.Event
 import MiniLight.Figure
 import qualified SDL
 
+-- | CompoonentUnit typeclass provides a way to define a new component.
+-- Any 'ComponentUnit' instance can be embedded into 'Component' type.
 class ComponentUnit c where
+  -- | Updating a model.
   update :: (HasLightEnv env, MonadIO m, MonadMask m) => c -> LightT env m c
   update = return
 
+  -- | Descirbes a view. The figures here would be cached. See also 'useCache' for the cache configuration.
   figures :: (HasLightEnv env, MonadIO m, MonadMask m) => c -> LightT env m [Figure]
 
+  -- | Drawing a figures.
   draw :: (HasLightEnv env, MonadIO m, MonadMask m) => c -> LightT env m ()
   draw comp = liftMiniLight . renders =<< figures comp
   {-# INLINE draw #-}
 
-  useCache :: c -> c -> Bool
+  -- | Return @True@ if a cache stored in the previous frame should be used.
+  useCache
+    :: c  -- ^ A model value in the previous frame
+    -> c  -- ^ A model value in the current frame
+    -> Bool
   useCache _ _ = False
 
+  -- | Event handlers
   onSignal :: (HasLightEnv env, MonadIO m, MonadMask m) => Event -> c -> LightT env m c
   onSignal _ = return
 
+-- | A wrapper for 'ComponentUnit' instances.
 data Component = forall c. ComponentUnit c => Component {
   component :: c,
   prev :: c,
   cache :: IORef [Figure]
 }
 
+-- | Create a new component.
 newComponent
   :: (ComponentUnit c, HasLightEnv env, MonadIO m, MonadMask m)
   => c
@@ -46,6 +58,7 @@ newComponent c = do
   ref  <- liftIO $ newIORef figs
   return $ Component {component = c, prev = c, cache = ref}
 
+-- | Get the size of a component.
 getComponentSize
   :: (ComponentUnit c, HasLightEnv env, MonadIO m, MonadMask m)
   => c
@@ -54,6 +67,7 @@ getComponentSize comp = do
   figs <- figures comp
   return $ foldl union (SDL.Rectangle (SDL.P 0) 0) $ map targetArea figs
 
+-- | Clear the previous model cache and reflect the current model.
 propagate :: Component -> Component
 propagate (Component comp _ cache) = Component comp comp cache
 

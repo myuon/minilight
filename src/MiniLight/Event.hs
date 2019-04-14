@@ -1,5 +1,4 @@
 module MiniLight.Event (
-  SDL.MouseButton(..),
   Event(..),
 ) where
 
