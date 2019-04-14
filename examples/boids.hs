@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+import Data.Component.Resolver
 import MiniLight
 import Control.Monad.State
 import qualified Data.Vector as V
@@ -113,6 +114,9 @@ main = do
     pic <- triangleOutline (Vect.V4 100 100 100 255) (Vect.V2 10 20)
 
     runMainloop
-      (defConfig { appConfigFile = Nothing, additionalComponents = [] })
+      ( (defConfig resolver) { appConfigFile        = Nothing
+                             , additionalComponents = []
+                             }
+      )
       (Game {objects = objs, pic = pic})
       (\_ -> execStateT mainloop)

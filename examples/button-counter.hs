@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+import Data.Component.Resolver
 import MiniLight
 import qualified Data.Text as T
 import qualified SDL
@@ -42,6 +43,9 @@ main = do
     button <- newComponent =<< new
 
     runMainloop
-      (defConfig { appConfigFile = Nothing, additionalComponents = [button] })
+      ( (defConfig resolver) { appConfigFile        = Nothing
+                             , additionalComponents = [button]
+                             }
+      )
       ()
       (\_ -> return)

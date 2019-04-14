@@ -2,6 +2,7 @@
 module Main where
 
 import Control.Monad.State
+import Data.Component.Resolver
 import qualified Data.Knob as Knob
 import Data.List (transpose)
 import Data.WAVE
@@ -60,6 +61,7 @@ main = do
 --    SDL.Mixer.play sound
 
     runLightT $ do
-      runMainloop (defConfig { appConfigFile = Just "resources/app.yml" })
-                  (Game {sound = sound})
-                  (\_ -> return)
+      runMainloop
+        ((defConfig resolver) { appConfigFile = Just "resources/app.yml" })
+        (Game {sound = sound})
+        (\_ -> return)
