@@ -1,13 +1,10 @@
-module MiniLight.Component.Button where
+module Data.Component.Button where
 
 import Control.Monad.IO.Class
 import Data.Aeson
 import qualified Data.Text as T
 import Data.Word (Word8)
-import MiniLight.Component.Types
-import MiniLight.Event
-import MiniLight.Figure
-import MiniLight.Light
+import MiniLight
 import qualified SDL
 import qualified SDL.Font
 import qualified SDL.Vect as Vect

@@ -1,13 +1,11 @@
-module MiniLight.Component.MessageEngine where
+module Data.Component.MessageEngine where
 
 import Control.Monad.State
 import Data.Aeson
 import qualified Data.Text as T
 import Data.Word (Word8)
 import Lens.Micro.Mtl
-import MiniLight.Component.Types
-import MiniLight.Figure
-import MiniLight.Light
+import MiniLight
 import qualified SDL
 import qualified SDL.Font
 import qualified SDL.Vect as Vect

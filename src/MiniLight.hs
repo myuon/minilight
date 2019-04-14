@@ -50,11 +50,11 @@ data LoopConfig = LoopConfig {
 }
 
 -- | Default configurations for the mainloop.
-defConfig :: LoopConfig
-defConfig = LoopConfig
+defConfig :: Resolver -> LoopConfig
+defConfig resolver = LoopConfig
   { watchKeys            = Nothing
   , appConfigFile        = Nothing
-  , componentResolver    = defResolver
+  , componentResolver    = resolver
   , additionalComponents = []
   }
 

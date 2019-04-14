@@ -1,16 +1,14 @@
-module MiniLight.Component.MessageLayer where
+module Data.Component.MessageLayer where
 
 import Control.Monad.State
 import Data.Aeson
 import Lens.Micro
 import Lens.Micro.Mtl
 import Linear
-import MiniLight.Component.Types
-import qualified MiniLight.Component.Layer as CLayer
-import qualified MiniLight.Component.AnimationLayer as CAnim
-import qualified MiniLight.Component.MessageEngine as CME
-import MiniLight.Figure
-import MiniLight.Light
+import MiniLight
+import qualified Data.Component.Layer as CLayer
+import qualified Data.Component.AnimationLayer as CAnim
+import qualified Data.Component.MessageEngine as CME
 import qualified SDL.Vect as Vect
 
 data MessageLayer = MessageLayer {

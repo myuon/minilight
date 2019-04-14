@@ -1,13 +1,11 @@
-module MiniLight.Component.AnimationLayer where
+module Data.Component.AnimationLayer where
 
 import Control.Monad.State
 import Data.Aeson
 import Linear
 import Lens.Micro
-import MiniLight.Figure
-import MiniLight.Light
-import qualified MiniLight.Component.Layer as Layer
-import MiniLight.Component.Types
+import MiniLight
+import qualified Data.Component.Layer as Layer
 import qualified SDL
 import qualified SDL.Vect as Vect
 

@@ -1,4 +1,4 @@
-{-| The package provides configuration loader and pre-defined resolver.
+{-| The package provides the configuration loader.
 
 An configuration example:
 
@@ -43,7 +43,6 @@ module MiniLight.Component (
   loadAppConfig,
 
   Resolver,
-  defResolver
 ) where
 
 import qualified Data.Aeson as Aeson
@@ -51,32 +50,6 @@ import qualified Data.Text as T
 import MiniLight.Light
 import MiniLight.Component.Types
 import MiniLight.Component.Loader
-import qualified MiniLight.Component.AnimationLayer as AnimationLayer
-import qualified MiniLight.Component.Button as Button
-import qualified MiniLight.Component.Layer as Layer
-import qualified MiniLight.Component.MessageEngine as MessageEngine
-import qualified MiniLight.Component.MessageLayer as MessageLayer
-
-foldResult :: (String -> b) -> (a -> b) -> Aeson.Result a -> b
-foldResult f g r = case r of
-  Aeson.Error   err -> f err
-  Aeson.Success a   -> g a
 
 type Resolver = T.Text -> Aeson.Value -> MiniLight Component
 
--- | Pre-defined resolver supports all components in this library.
-defResolver :: Resolver
-defResolver name props = case name of
-  "animation-layer" -> newComponent
-    =<< AnimationLayer.new (foldResult error id $ Aeson.fromJSON props)
-  "button" ->
-    newComponent =<< Button.new (foldResult error id $ Aeson.fromJSON props)
-  "layer" ->
-    newComponent =<< Layer.new (foldResult error id $ Aeson.fromJSON props)
-  "message-engine" -> newComponent
-    =<< MessageEngine.new (foldResult error id $ Aeson.fromJSON props)
-  "message-layer" -> newComponent
-    =<< MessageLayer.new (foldResult error id $ Aeson.fromJSON props)
-  "tiled-layer" -> newComponent
-    =<< Layer.newNineTile (foldResult error id $ Aeson.fromJSON props)
-  _ -> error $ T.unpack $ "Component not defined: `" <> name <> "`"

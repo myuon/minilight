@@ -37,11 +37,12 @@ library
     MiniLight.Component
     MiniLight.Component.Types
     MiniLight.Component.Loader
-    MiniLight.Component.Layer
-    MiniLight.Component.AnimationLayer
-    MiniLight.Component.MessageEngine
-    MiniLight.Component.MessageLayer
-    MiniLight.Component.Button
+    Data.Component.Default
+    Data.Component.Layer
+    Data.Component.AnimationLayer
+    Data.Component.MessageEngine
+    Data.Component.MessageLayer
+    Data.Component.Button
   -- other-modules:
   -- other-extensions:
   build-depends:
