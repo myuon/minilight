@@ -139,7 +139,7 @@ runMainloop conv conf initial loop = do
 
     forM_ [0 .. VM.length (components loopState) - 1] $ \i -> do
       comp  <- liftIO $ VM.read (components loopState) i
-      comp' <- update comp
+      comp' <- envLightT (\env -> conv $ loopState { env = env }) $ update comp
       liftIO $ VM.write (components loopState) i comp'
 
     s' <- envLightT (\env -> conv $ loopState { env = env }) $ loop s
@@ -152,7 +152,13 @@ runMainloop conv conf initial loop = do
 
     forM_ [0 .. VM.length (components loopState) - 1] $ \i -> do
       comp  <- liftIO $ VM.read (components loopState) i
-      comp' <- foldlM (\comp ev -> onSignal (RawEvent ev) comp) comp events
+      comp' <- foldlM
+        ( \comp ev ->
+          envLightT (\env -> conv $ loopState { env = env })
+            $ onSignal (RawEvent ev) comp
+        )
+        comp
+        events
       liftIO $ VM.write (components loopState) i comp'
 
     let

@@ -19,7 +19,7 @@ import qualified SDL
 -- Any 'ComponentUnit' instance can be embedded into 'Component' type.
 class ComponentUnit c where
   -- | Updating a model.
-  update :: (HasLightEnv env, MonadIO m, MonadMask m) => c -> LightT env m c
+  update :: (HasLightEnv env, HasLoopEnv env, MonadIO m, MonadMask m) => c -> LightT env m c
   update = return
 
   -- | Descirbes a view. The figures here would be cached. See also 'useCache' for the cache configuration.
@@ -31,7 +31,7 @@ class ComponentUnit c where
   {-# INLINE draw #-}
 
   -- | Event handlers
-  onSignal :: (HasLightEnv env, MonadIO m, MonadMask m) => Event -> c -> LightT env m c
+  onSignal :: (HasLightEnv env, HasLoopEnv env, MonadIO m, MonadMask m) => Event -> c -> LightT env m c
   onSignal _ = return
 
   -- | Return @True@ if a cache stored in the previous frame should be used.
@@ -85,15 +85,15 @@ instance ComponentUnit Component where
 
   figures (Component comp _ _) = figures comp
 
-  draw (Component comp prev ref) = liftMiniLight $ do
+  draw (Component comp prev ref) = do
     if useCache prev comp
-      then renders =<< liftIO (readIORef ref)
+      then liftMiniLight . renders =<< liftIO (readIORef ref)
       else do
         figs <- liftIO (readIORef ref)
         beforeClearCache comp figs
 
         figs <- figures comp
-        renders figs
+        liftMiniLight $ renders figs
         liftIO $ writeIORef ref figs
 
   onSignal ev (Component comp prev cache) = fmap (\comp' -> Component comp' prev cache) $ onSignal ev comp
