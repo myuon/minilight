@@ -9,7 +9,7 @@ module MiniLight (
   runLightT,
   LoopConfig (..),
   defConfig,
-  LoopState (..),
+  LoopEnv (..),
   runMainloop,
 
   HasLoopEnv (..),
@@ -63,8 +63,8 @@ defConfig resolver = LoopConfig
   , additionalComponents = []
   }
 
--- | LoopState value would be passed to user side in a mainloop.
-data LoopState env = LoopState {
+-- | LoopEnv value would be passed to user side in a mainloop.
+data LoopEnv env = LoopState {
   env :: env,
   keyStates :: HM.HashMap SDL.Scancode Int,
   events :: [SDL.Event],
@@ -82,14 +82,14 @@ class HasLoopEnv env where
   componentsL :: Lens' env (VM.IOVector Component)
 
 -- | Lens to the env inside 'LoopState'
-envL :: Lens' (LoopState env) env
+envL :: Lens' (LoopEnv env) env
 envL = lens env (\e r -> e { env = r })
 
-instance HasLightEnv env => HasLightEnv (LoopState env) where
+instance HasLightEnv env => HasLightEnv (LoopEnv env) where
   rendererL = envL . rendererL
   fontCacheL = envL . fontCacheL
 
-instance HasLoopEnv (LoopState env) where
+instance HasLoopEnv (LoopEnv env) where
   keyStatesL = lens keyStates (\env r -> env { keyStates = r })
   eventsL = lens events (\env r -> env { events = r })
   componentsL = lens components (\env r -> env { components = r })
@@ -101,7 +101,7 @@ fromList xs = liftIO $ do
   return vec
 
 -- | Type synonym to the minimal type of the mainloop
-type MiniLoop = LightT (LoopState LightEnv) IO
+type MiniLoop = LightT (LoopEnv LightEnv) IO
 
 -- | Run a mainloop.
 -- In a mainloop, components and events are managed.
@@ -115,7 +115,7 @@ runMainloop
      , MonadMask m
      )
   => LoopConfig  -- ^ loop config
-  -> (LoopState env -> loop)  -- ^ LoopState conversion function (you can pass @id@, fixing @loop@ as @'LoopState' 'LightEnv'@)
+  -> (LoopEnv env -> loop)  -- ^ LoopState conversion function (you can pass @id@, fixing @loop@ as @'LoopState' 'LightEnv'@)
   -> s  -- ^ initial state
   -> (s -> LightT loop m s)  -- ^ a function called in every loop
   -> LightT env m ()
