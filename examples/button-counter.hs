@@ -43,9 +43,10 @@ main = do
     button <- newComponent =<< new
 
     runMainloop
+      id
       ( (defConfig resolver) { appConfigFile        = Nothing
                              , additionalComponents = [button]
                              }
       )
       ()
-      (\_ -> return)
+      return

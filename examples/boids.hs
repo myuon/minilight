@@ -33,7 +33,7 @@ width = 800
 height :: Int
 height = 600
 
-mainloop :: StateT Game MiniLight ()
+mainloop :: StateT Game MiniLoop ()
 mainloop = do
   Game { objects = objects, pic = pic } <- get
 
@@ -114,9 +114,10 @@ main = do
     pic <- triangleOutline (Vect.V4 100 100 100 255) (Vect.V2 10 20)
 
     runMainloop
+      id
       ( (defConfig resolver) { appConfigFile        = Nothing
                              , additionalComponents = []
                              }
       )
       (Game {objects = objs, pic = pic})
-      (\_ -> execStateT mainloop)
+      (execStateT mainloop)

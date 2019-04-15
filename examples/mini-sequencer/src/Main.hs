@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import Control.Monad.State
 import Data.Component.Resolver
 import qualified Data.Knob as Knob
 import Data.List (transpose)
@@ -43,10 +42,6 @@ data Game = Game {
   sound :: SDL.Mixer.Chunk
 }
 
-mainloop :: LoopState -> StateT Game MiniLight ()
-mainloop _ = do
-  return ()
-
 main :: IO ()
 main = do
   knob   <- Knob.newKnob ""
@@ -62,6 +57,7 @@ main = do
 
     runLightT $ do
       runMainloop
+        id
         ((defConfig resolver) { appConfigFile = Just "resources/app.yml" })
         (Game {sound = sound})
-        (\_ -> return)
+        return
