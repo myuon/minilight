@@ -114,12 +114,12 @@ runMainloop
      , MonadIO m
      , MonadMask m
      )
-  => LoopConfig  -- ^ loop config
-  -> (LoopEnv env -> loop)  -- ^ LoopState conversion function (you can pass @id@, fixing @loop@ as @'LoopState' 'LightEnv'@)
+  => (LoopEnv env -> loop)  -- ^ LoopState conversion function (you can pass @id@, fixing @loop@ as @'LoopState' 'LightEnv'@)
+  -> LoopConfig  -- ^ loop config
   -> s  -- ^ initial state
   -> (s -> LightT loop m s)  -- ^ a function called in every loop
   -> LightT env m ()
-runMainloop conf conv initial loop = do
+runMainloop conv conf initial loop = do
   components <-
     liftMiniLight $ fromList . (++ additionalComponents conf) =<< maybe
       (return [])
