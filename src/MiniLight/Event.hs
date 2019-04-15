@@ -1,4 +1,5 @@
 module MiniLight.Event (
+  Name,
   Event(..),
 ) where
 
@@ -8,5 +9,5 @@ import Language.Haskell.TH (Name)
 
 data Event
   = Never
-  | ComponentEvent Name T.Text
+  | Signal Name T.Text
   | RawEvent SDL.Event
