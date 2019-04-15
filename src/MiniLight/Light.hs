@@ -1,8 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RoleAnnotations #-}
 module MiniLight.Light (
-  MonadIO(..),
-
   HasLightEnv (..),
   LightT (..),
   LightEnv (..),
@@ -11,11 +9,16 @@ module MiniLight.Light (
   envLightT,
   mapLightT,
 
+  HasLoopEnv (..),
+
   FontDescriptor(..),
   FontStyle(..),
   loadFontCache,
   loadFont,
-  withFont
+  withFont,
+
+  -- * Re-exports
+  MonadIO(..),
 ) where
 
 import Control.Monad.IO.Class
@@ -73,6 +76,13 @@ envLightT f m = LightT $ ReaderT $ runReaderT (runLightT' m) . f
 mapLightT :: (m a -> n a) -> LightT env m a -> LightT env n a
 mapLightT f m = LightT $ ReaderT $ f . runReaderT (runLightT' m)
 {-# INLINE mapLightT #-}
+
+class HasLoopEnv env where
+  -- | Contains the number of frames that a specific keys are continuously pressing.
+  keyStatesL :: Lens' env (HM.HashMap SDL.Scancode Int)
+
+  -- | Occurred events since the last frame.
+  eventsL :: Lens' env [SDL.Event]
 
 loadFontCache :: MonadIO m => m FontMap
 loadFontCache = do

@@ -10,11 +10,8 @@ module MiniLight (
   LoopConfig (..),
   defConfig,
   LoopEnv (..),
-  runMainloop,
-
-  HasLoopEnv (..),
-  envL,
   MiniLoop,
+  runMainloop,
 ) where
 
 import Control.Concurrent (threadDelay)
@@ -63,6 +60,12 @@ defConfig resolver = LoopConfig
   , additionalComponents = []
   }
 
+fromList :: MonadIO m => [a] -> m (VM.IOVector a)
+fromList xs = liftIO $ do
+  vec <- VM.new $ length xs
+  forM_ (zip [0 ..] xs) $ uncurry (VM.write vec)
+  return vec
+
 -- | LoopEnv value would be passed to user side in a mainloop.
 data LoopEnv env = LoopState {
   env :: env,
@@ -70,16 +73,6 @@ data LoopEnv env = LoopState {
   events :: [SDL.Event],
   components :: VM.IOVector Component
 }
-
-class HasLoopEnv env where
-  -- | Contains the number of frames that a specific keys are continuously pressing.
-  keyStatesL :: Lens' env (HM.HashMap SDL.Scancode Int)
-
-  -- | Occurred events since the last frame.
-  eventsL :: Lens' env [SDL.Event]
-
-  -- | Current components managed in a mainloop. Be careful to modify a component destructively.
-  componentsL :: Lens' env (VM.IOVector Component)
 
 -- | Lens to the env inside 'LoopState'
 envL :: Lens' (LoopEnv env) env
@@ -92,13 +85,6 @@ instance HasLightEnv env => HasLightEnv (LoopEnv env) where
 instance HasLoopEnv (LoopEnv env) where
   keyStatesL = lens keyStates (\env r -> env { keyStates = r })
   eventsL = lens events (\env r -> env { events = r })
-  componentsL = lens components (\env r -> env { components = r })
-
-fromList :: MonadIO m => [a] -> m (VM.IOVector a)
-fromList xs = liftIO $ do
-  vec <- VM.new $ length xs
-  forM_ (zip [0 ..] xs) $ uncurry (VM.write vec)
-  return vec
 
 -- | Type synonym to the minimal type of the mainloop
 type MiniLoop = LightT (LoopEnv LightEnv) IO
@@ -131,8 +117,8 @@ runMainloop conv conf initial loop = do
     ( LoopState
       { keyStates  = HM.empty
       , events     = []
-      , components = components
       , env        = env
+      , components = components
       }
     )
     initial
