@@ -18,9 +18,10 @@ import Control.Concurrent (threadDelay)
 import Control.Monad.Catch
 import Control.Monad.Reader
 import qualified Data.Aeson as Aeson
-import Data.Hashable (Hashable(..))
 import Data.Foldable (foldlM)
+import Data.Hashable (Hashable(..))
 import qualified Data.HashMap.Strict as HM
+import Data.IORef
 import qualified Data.Text as T
 import qualified Data.Vector.Mutable as VM
 import Graphics.Text.TrueType
@@ -70,7 +71,7 @@ fromList xs = liftIO $ do
 data LoopEnv env = LoopState {
   env :: env,
   keyStates :: HM.HashMap SDL.Scancode Int,
-  events :: [SDL.Event],
+  events :: IORef [Event] ,
   components :: VM.IOVector Component
 }
 
@@ -111,12 +112,13 @@ runMainloop conv conf initial loop = do
       (return [])
       (flip loadAppConfig (componentResolver conf))
       (appConfigFile conf)
+  events <- liftIO $ newIORef []
 
-  env <- view id
+  env    <- view id
   go
     ( LoopState
       { keyStates  = HM.empty
-      , events     = []
+      , events     = events
       , env        = env
       , components = components
       }
@@ -150,6 +152,10 @@ runMainloop conv conf initial loop = do
     events <- SDL.pollEvents
     keys   <- SDL.getKeyboardState
 
+    envLightT (\env -> conv $ loopState { env = env }) $ do
+      evref <- view eventsL
+      liftIO $ writeIORef evref $ map RawEvent events
+
     forM_ [0 .. VM.length (components loopState) - 1] $ \i -> do
       comp  <- liftIO $ VM.read (components loopState) i
       comp' <- foldlM
@@ -170,7 +176,7 @@ runMainloop conv conf initial loop = do
             (watchKeys conf)
         $ keyStates loopState
         )
-    let loopState' = loopState { keyStates = specifiedKeys, events = events }
+    let loopState' = loopState { keyStates = specifiedKeys }
     let quit = any
           ( \event -> case SDL.eventPayload event of
             SDL.WindowClosedEvent _ -> True

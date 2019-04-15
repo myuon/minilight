@@ -26,9 +26,11 @@ import Control.Monad.Catch
 import Control.Monad.Reader
 import Data.Hashable (Hashable(..))
 import qualified Data.HashMap.Strict as HM
+import Data.IORef
 import Graphics.Text.TrueType
 import Lens.Micro
 import Lens.Micro.Mtl
+import MiniLight.Event
 import qualified SDL
 import qualified SDL.Font
 
@@ -82,7 +84,7 @@ class HasLoopEnv env where
   keyStatesL :: Lens' env (HM.HashMap SDL.Scancode Int)
 
   -- | Occurred events since the last frame.
-  eventsL :: Lens' env [SDL.Event]
+  eventsL :: Lens' env (IORef [Event])
 
 loadFontCache :: MonadIO m => m FontMap
 loadFontCache = do
