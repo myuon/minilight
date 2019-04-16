@@ -2,6 +2,7 @@ module Data.Component.Button where
 
 import Data.Aeson
 import qualified Data.Text as T
+import Data.Typeable
 import Data.Word (Word8)
 import MiniLight
 import qualified SDL
@@ -14,9 +15,9 @@ data Button = Button {
 }
 
 data ButtonEvent = Click
+  deriving Typeable
 
-instance EventType ButtonEvent where
-  getEventName Click = "click"
+instance EventType ButtonEvent
 
 instance ComponentUnit Button where
   update = return
@@ -33,7 +34,7 @@ instance ComponentUnit Button where
   useCache _ _ = True
 
   onSignal (RawEvent (SDL.Event _ (SDL.MouseButtonEvent (SDL.MouseButtonEventData _ SDL.Released _ _ _ _)))) comp = do
-    emit ''Button Click
+    emit "_" Click
     return comp
   onSignal _ comp = return comp
 

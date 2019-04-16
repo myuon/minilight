@@ -1,18 +1,18 @@
 {-# LANGUAGE ExistentialQuantification #-}
 module MiniLight.Event (
-  Name,
   Event (..),
-  EventType (..),
+  EventType,
 ) where
 
 import qualified SDL
 import qualified Data.Text as T
-import Language.Haskell.TH (Name)
+import Data.Typeable
 
-class EventType b where
-  getEventName :: b -> T.Text
+-- | EventType says some type can be used as an event type.
+class Typeable e => EventType e
 
+-- | Event type representation
 data Event
   = Never
-  | forall a. EventType a => Signal Name a
+  | forall a. EventType a => Signal T.Text a
   | RawEvent SDL.Event
