@@ -99,7 +99,7 @@ emit
   -> LightT env m ()
 emit name t = do
   ref <- view signalQueueL
-  liftIO $ modifyIORef' ref $ (Signal name t :)
+  liftIO $ modifyIORef' ref $ (signal name t :)
 
 loadFontCache :: MonadIO m => m FontMap
 loadFontCache = do
