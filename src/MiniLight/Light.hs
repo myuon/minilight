@@ -28,7 +28,6 @@ import Control.Monad.Reader
 import Data.Hashable (Hashable(..))
 import qualified Data.HashMap.Strict as HM
 import Data.IORef
-import qualified Data.Text as T
 import Graphics.Text.TrueType
 import Lens.Micro
 import Lens.Micro.Mtl
@@ -92,7 +91,8 @@ class HasLoopEnv env where
   signalQueueL :: Lens' env (IORef [Event])
 
 -- | Emit a signal, which will be catched at the next frame.
-emit :: (HasLoopEnv env, MonadIO m) => Name -> T.Text -> LightT env m ()
+emit
+  :: (HasLoopEnv env, MonadIO m, EventType et) => Name -> et -> LightT env m ()
 emit name t = do
   ref <- view signalQueueL
   liftIO $ modifyIORef' ref $ (Signal name t :)

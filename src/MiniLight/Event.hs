@@ -1,14 +1,18 @@
+{-# LANGUAGE ExistentialQuantification #-}
 module MiniLight.Event (
   Name,
-  Event(..),
+  Event (..),
+  EventType (..),
 ) where
 
 import qualified SDL
 import qualified Data.Text as T
 import Language.Haskell.TH (Name)
 
+class EventType b where
+  getEventName :: b -> T.Text
+
 data Event
   = Never
-  | Signal Name T.Text
+  | forall a. EventType a => Signal Name a
   | RawEvent SDL.Event
-  deriving (Eq, Show)
