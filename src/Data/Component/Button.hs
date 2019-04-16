@@ -1,6 +1,5 @@
 module Data.Component.Button where
 
-import Control.Monad.IO.Class
 import Data.Aeson
 import qualified Data.Text as T
 import Data.Word (Word8)
@@ -13,6 +12,11 @@ data Button = Button {
   font :: SDL.Font.Font,
   config :: Config
 }
+
+data ButtonEvent = Click
+
+instance EventType ButtonEvent where
+  getEventName Click = "click"
 
 instance ComponentUnit Button where
   update = return
@@ -29,7 +33,7 @@ instance ComponentUnit Button where
   useCache _ _ = True
 
   onSignal (RawEvent (SDL.Event _ (SDL.MouseButtonEvent (SDL.MouseButtonEventData _ SDL.Released _ _ _ _)))) comp = do
-    emit ''Button "hey!"
+    emit ''Button Click
     return comp
   onSignal _ comp = return comp
 
