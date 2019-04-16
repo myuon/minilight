@@ -71,7 +71,8 @@ fromList xs = liftIO $ do
 data LoopEnv env = LoopState {
   env :: env,
   keyStates :: HM.HashMap SDL.Scancode Int,
-  events :: IORef [Event] ,
+  events :: IORef [Event],
+  signalQueue :: IORef [Event],
   components :: VM.IOVector Component
 }
 
@@ -86,6 +87,7 @@ instance HasLightEnv env => HasLightEnv (LoopEnv env) where
 instance HasLoopEnv (LoopEnv env) where
   keyStatesL = lens keyStates (\env r -> env { keyStates = r })
   eventsL = lens events (\env r -> env { events = r })
+  signalQueueL = lens signalQueue (\env r -> env { signalQueue = r })
 
 -- | Type synonym to the minimal type of the mainloop
 type MiniLoop = LightT (LoopEnv LightEnv) IO
@@ -112,15 +114,17 @@ runMainloop conv conf initial loop = do
       (return [])
       (flip loadAppConfig (componentResolver conf))
       (appConfigFile conf)
-  events <- liftIO $ newIORef []
+  events      <- liftIO $ newIORef []
+  signalQueue <- liftIO $ newIORef []
 
-  env    <- view id
+  env         <- view id
   go
     ( LoopState
-      { keyStates  = HM.empty
-      , events     = events
-      , env        = env
-      , components = components
+      { keyStates   = HM.empty
+      , events      = events
+      , signalQueue = signalQueue
+      , env         = env
+      , components  = components
       }
     )
     initial
@@ -155,6 +159,11 @@ runMainloop conv conf initial loop = do
     envLightT (\env -> conv $ loopState { env = env }) $ do
       evref <- view eventsL
       liftIO $ writeIORef evref $ map RawEvent events
+
+      sigref  <- view signalQueueL
+      signals <- liftIO $ readIORef sigref
+      liftIO $ modifyIORef evref $ (++ signals)
+      liftIO $ writeIORef sigref []
 
     forM_ [0 .. VM.length (components loopState) - 1] $ \i -> do
       comp  <- liftIO $ VM.read (components loopState) i

@@ -11,3 +11,4 @@ data Event
   = Never
   | Signal Name T.Text
   | RawEvent SDL.Event
+  deriving (Eq, Show)
