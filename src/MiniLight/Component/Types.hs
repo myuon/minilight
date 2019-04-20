@@ -10,6 +10,9 @@ module MiniLight.Component.Types (
 import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Data.IORef
+import qualified Data.UUID
+import qualified Data.UUID.V4
+import qualified Data.Text as T
 import MiniLight.Light
 import MiniLight.Event
 import MiniLight.Figure
@@ -50,6 +53,7 @@ class ComponentUnit c where
 
 -- | A wrapper for 'ComponentUnit' instances.
 data Component = forall c. ComponentUnit c => Component {
+  uid :: T.Text,
   component :: c,
   prev :: c,
   cache :: IORef [Figure]
@@ -61,9 +65,10 @@ newComponent
   => c
   -> LightT env m Component
 newComponent c = do
+  uid  <- liftIO $ Data.UUID.toText <$> Data.UUID.V4.nextRandom
   figs <- figures c
   ref  <- liftIO $ newIORef figs
-  return $ Component {component = c, prev = c, cache = ref}
+  return $ Component {uid = uid, component = c, prev = c, cache = ref}
 
 -- | Get the size of a component.
 getComponentSize
@@ -76,16 +81,16 @@ getComponentSize comp = do
 
 -- | Clear the previous model cache and reflect the current model.
 propagate :: Component -> Component
-propagate (Component comp _ cache) = Component comp comp cache
+propagate (Component uid comp _ cache) = Component uid comp comp cache
 
 instance ComponentUnit Component where
-  update (Component comp prev cache) = do
+  update (Component uid comp prev cache) = do
     comp' <- update comp
-    return $ Component comp' prev cache
+    return $ Component uid comp' prev cache
 
-  figures (Component comp _ _) = figures comp
+  figures (Component _ comp _ _) = figures comp
 
-  draw (Component comp prev ref) = do
+  draw (Component _ comp prev ref) = do
     if useCache prev comp
       then liftMiniLight . renders =<< liftIO (readIORef ref)
       else do
@@ -96,4 +101,4 @@ instance ComponentUnit Component where
         liftMiniLight $ renders figs
         liftIO $ writeIORef ref figs
 
-  onSignal ev (Component comp prev cache) = fmap (\comp' -> Component comp' prev cache) $ onSignal ev comp
+  onSignal ev (Component uid comp prev cache) = fmap (\comp' -> Component uid comp' prev cache) $ onSignal ev comp
