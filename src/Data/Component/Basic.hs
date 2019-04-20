@@ -13,6 +13,7 @@ module Data.Component.Basic where
 import Data.Aeson
 import Data.Word (Word8)
 import qualified SDL.Vect as Vect
+import qualified SDL.Font
 import MiniLight
 
 data Config = Config {
@@ -45,3 +46,6 @@ instance FromJSON Config where
       return $ (FontDescriptor family (FontStyle bold italic), size)
 
     return $ Config size position color fontDesc fontSize
+
+loadFontFrom :: Config -> MiniLight SDL.Font.Font
+loadFontFrom conf = loadFont (fontDesc conf) (fontSize conf)
