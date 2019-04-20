@@ -34,7 +34,7 @@ instance ComponentUnit Button where
   useCache _ _ = True
 
   onSignal (RawEvent (SDL.Event _ (SDL.MouseButtonEvent (SDL.MouseButtonEventData _ SDL.Released _ _ _ _)))) comp = do
-    emit "_" Click
+    emit Click
     return comp
   onSignal _ comp = return comp
 

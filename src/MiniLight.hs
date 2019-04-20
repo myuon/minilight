@@ -89,6 +89,18 @@ instance HasLoopEnv (LoopEnv env) where
   eventsL = lens events (\env r -> env { events = r })
   signalQueueL = lens signalQueue (\env r -> env { signalQueue = r })
 
+instance HasLightEnv env => HasLightEnv (T.Text, env) where
+  rendererL = _2 . rendererL
+  fontCacheL = _2 . fontCacheL
+
+instance HasLoopEnv env => HasLoopEnv (T.Text, env) where
+  keyStatesL = _2 . keyStatesL
+  eventsL = _2 . eventsL
+  signalQueueL = _2 . signalQueueL
+
+instance HasComponentEnv (T.Text, env) where
+  uidL = _1
+
 -- | Type synonym to the minimal type of the mainloop
 type MiniLoop = LightT (LoopEnv LightEnv) IO
 
@@ -145,7 +157,8 @@ runMainloop conv conf initial loop = do
 
     forM_ [0 .. VM.length (components loopState) - 1] $ \i -> do
       comp  <- liftIO $ VM.read (components loopState) i
-      comp' <- envLightT (\env -> conv $ loopState { env = env }) $ update comp
+      comp' <- envLightT (\env -> (getUID comp, conv $ loopState { env = env }))
+        $ update comp
       liftIO $ VM.write (components loopState) i comp'
 
     s' <- envLightT (\env -> conv $ loopState { env = env }) $ loop s
@@ -169,7 +182,7 @@ runMainloop conv conf initial loop = do
       comp  <- liftIO $ VM.read (components loopState) i
       comp' <- foldlM
         ( \comp ev ->
-          envLightT (\env -> conv $ loopState { env = env })
+          envLightT (\env -> (getUID comp, conv $ loopState { env = env }))
             $ onSignal (RawEvent ev) comp
         )
         comp

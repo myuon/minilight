@@ -1,9 +1,13 @@
 {-# LANGUAGE ExistentialQuantification #-}
 module MiniLight.Component.Types (
+  HasComponentEnv(..),
+  emit,
+
   ComponentUnit(..),
   Component,
   newComponent,
   getComponentSize,
+  getUID,
   propagate,
 ) where
 
@@ -13,16 +17,32 @@ import Data.IORef
 import qualified Data.UUID
 import qualified Data.UUID.V4
 import qualified Data.Text as T
+import Lens.Micro
+import Lens.Micro.Mtl
 import MiniLight.Light
 import MiniLight.Event
 import MiniLight.Figure
 import qualified SDL
 
+class HasComponentEnv env where
+  -- | Lens to the unique id, which is provided for each component.
+  uidL :: Lens' env T.Text
+
+-- | Emit a signal, which will be catched at the next frame.
+emit
+  :: (HasLoopEnv env, HasComponentEnv env, MonadIO m, EventType et)
+  => et
+  -> LightT env m ()
+emit et = do
+  uid <- view uidL
+  ref <- view signalQueueL
+  liftIO $ modifyIORef' ref $ (signal uid et :)
+
 -- | CompoonentUnit typeclass provides a way to define a new component.
 -- Any 'ComponentUnit' instance can be embedded into 'Component' type.
 class ComponentUnit c where
   -- | Updating a model.
-  update :: (HasLightEnv env, HasLoopEnv env, MonadIO m, MonadMask m) => c -> LightT env m c
+  update :: (HasLightEnv env, HasLoopEnv env, HasComponentEnv env, MonadIO m, MonadMask m) => c -> LightT env m c
   update = return
 
   -- | Descirbes a view. The figures here would be cached. See also 'useCache' for the cache configuration.
@@ -34,7 +54,7 @@ class ComponentUnit c where
   {-# INLINE draw #-}
 
   -- | Event handlers
-  onSignal :: (HasLightEnv env, HasLoopEnv env, MonadIO m, MonadMask m) => Event -> c -> LightT env m c
+  onSignal :: (HasLightEnv env, HasLoopEnv env, HasComponentEnv env, MonadIO m, MonadMask m) => Event -> c -> LightT env m c
   onSignal _ = return
 
   -- | Return @True@ if a cache stored in the previous frame should be used.
@@ -78,6 +98,10 @@ getComponentSize
 getComponentSize comp = do
   figs <- figures comp
   return $ foldl union (SDL.Rectangle (SDL.P 0) 0) $ map targetArea figs
+
+-- | Get its unique id.
+getUID :: Component -> T.Text
+getUID (Component uid _ _ _) = uid
 
 -- | Clear the previous model cache and reflect the current model.
 propagate :: Component -> Component
