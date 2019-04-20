@@ -11,11 +11,13 @@ A component should have the followings (those can be omitted):
 module Data.Component.Basic where
 
 import Data.Aeson
+import Data.Aeson.Types
 import Data.Word (Word8)
 import qualified SDL.Vect as Vect
 import qualified SDL.Font
 import MiniLight
 
+-- | Basic config type
 data Config = Config {
   size :: Vect.V2 Int,
   position :: Vect.V2 Int,
@@ -47,5 +49,14 @@ instance FromJSON Config where
 
     return $ Config size position color fontDesc fontSize
 
+-- | Load a system font from 'Config' type.
 loadFontFrom :: Config -> MiniLight SDL.Font.Font
 loadFontFrom conf = loadFont (fontDesc conf) (fontSize conf)
+
+-- | This wrapper function is useful when you write your component config parser.
+wrapConfig
+  :: (Config -> a -> Parser r) -> (Object -> Parser a) -> Value -> Parser r
+wrapConfig f p = withObject "wrapConfig" $ \v -> do
+  other <- p v
+  conf  <- parseJSON (Object v)
+  f conf other
