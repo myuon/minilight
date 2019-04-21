@@ -12,7 +12,9 @@ module Data.Component.Basic where
 
 import Data.Aeson
 import Data.Aeson.Types
+import Data.Typeable
 import Data.Word (Word8)
+import qualified SDL
 import qualified SDL.Vect as Vect
 import qualified SDL.Font
 import MiniLight
@@ -60,3 +62,44 @@ wrapConfig f p = withObject "wrapConfig" $ \v -> do
   other <- p v
   conf  <- parseJSON (Object v)
   f conf other
+
+-- | Basic signal type.
+data Signal where
+  Click :: Signal
+  MouseOver
+    :: Vect.V2 Int  -- ^ The relative position of the mouse pointer
+    -> Signal
+  deriving Typeable
+
+instance EventType Signal
+
+-- | This wrapper function is useful when you write your own 'onSignal' component.
+wrapSignal
+  :: ( HasLightEnv env
+     , HasLoopEnv env
+     , HasComponentEnv env
+     , MonadIO m
+     , ComponentUnit c
+     )
+  => (c -> Config)  -- ^ 'Config' getter
+  -> (c -> LightT env m c)  -- ^ Custom @onSignal@ function
+  -> (Event -> c -> LightT env m c)
+wrapSignal getter f ev comp = do
+  emitBasicSignal ev (getter comp)
+  f comp
+
+-- | Basic signaling function.
+emitBasicSignal
+  :: (HasLightEnv env, HasLoopEnv env, HasComponentEnv env, MonadIO m)
+  => Event
+  -> Config
+  -> LightT env m ()
+emitBasicSignal (RawEvent (SDL.Event _ (SDL.MouseMotionEvent (SDL.MouseMotionEventData _ _ _ (SDL.P pos) _)))) conf
+  | contains (SDL.Rectangle (SDL.P (position conf)) (size conf))
+             (fmap fromEnum pos)
+  = emit $ MouseOver $ fmap fromEnum pos
+emitBasicSignal _ _ = return ()
+
+contains :: (Ord a, Num a) => SDL.Rectangle a -> Vect.V2 a -> Bool
+contains (SDL.Rectangle (Vect.P (Vect.V2 x y)) (Vect.V2 w h)) (Vect.V2 px py) =
+  x <= px && px <= x + w && y <= py && py <= y + h

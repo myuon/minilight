@@ -2,6 +2,7 @@
 -}
 module Data.Component.Resolver (
   resolver,
+  foldResult,
 ) where
 
 import qualified Data.Aeson as Aeson
