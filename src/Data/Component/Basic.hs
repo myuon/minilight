@@ -91,11 +91,11 @@ wrapSignal
      , ComponentUnit c
      )
   => (c -> Config)  -- ^ 'Config' getter
-  -> (c -> LightT env m c)  -- ^ Custom @onSignal@ function
+  -> (Event -> c -> LightT env m c)  -- ^ Custom @onSignal@ function
   -> (Event -> c -> LightT env m c)
 wrapSignal getter f ev comp = do
   emitBasicSignal ev (getter comp)
-  f comp
+  f               ev comp
 
 -- | Basic signaling function.
 emitBasicSignal

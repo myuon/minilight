@@ -178,16 +178,17 @@ runMainloop conv conf initial loop = do
       liftIO $ modifyIORef evref $ (++ signals)
       liftIO $ writeIORef sigref []
 
-    forM_ [0 .. VM.length (components loopState) - 1] $ \i -> do
-      comp  <- liftIO $ VM.read (components loopState) i
-      comp' <- foldlM
-        ( \comp ev ->
-          envLightT (\env -> (getUID comp, conv $ loopState { env = env }))
-            $ onSignal (RawEvent ev) comp
-        )
-        comp
-        events
-      liftIO $ VM.write (components loopState) i comp'
+    envLightT (\env -> conv $ loopState { env = env }) $ do
+      evref  <- view eventsL
+      events <- liftIO $ readIORef evref
+
+      forM_ [0 .. VM.length (components loopState) - 1] $ \i -> do
+        comp  <- liftIO $ VM.read (components loopState) i
+        comp' <- foldlM
+          (\comp ev -> envLightT ((,) (getUID comp)) $ onSignal ev comp)
+          comp
+          events
+        liftIO $ VM.write (components loopState) i comp'
 
     let
       specifiedKeys = HM.mapWithKey
