@@ -63,9 +63,18 @@ wrapConfig f p = withObject "wrapConfig" $ \v -> do
   conf  <- parseJSON (Object v)
   f conf other
 
+-- | The rectangle region of the component.
+areaRectangle :: Config -> SDL.Rectangle Int
+areaRectangle conf = SDL.Rectangle (SDL.P (position conf)) (size conf)
+
 -- | Basic signal type.
 data Signal where
-  Click :: Signal
+  MousePressed
+    :: Vect.V2 Int  -- ^ The relative position of the mouse pointer
+    -> Signal
+  MouseReleased
+    :: Vect.V2 Int  -- ^ The relative position of the mouse pointer
+    -> Signal
   MouseOver
     :: Vect.V2 Int  -- ^ The relative position of the mouse pointer
     -> Signal
@@ -95,9 +104,17 @@ emitBasicSignal
   -> Config
   -> LightT env m ()
 emitBasicSignal (RawEvent (SDL.Event _ (SDL.MouseMotionEvent (SDL.MouseMotionEventData _ _ _ (SDL.P pos) _)))) conf
-  | contains (SDL.Rectangle (SDL.P (position conf)) (size conf))
-             (fmap fromEnum pos)
-  = emit $ MouseOver $ fmap fromEnum pos
+  | contains (areaRectangle conf) (fmap fromEnum pos)
+  = emit $ MouseOver $ fmap fromEnum pos - position conf
+emitBasicSignal (RawEvent (SDL.Event _ (SDL.MouseButtonEvent (SDL.MouseButtonEventData _ state _ _ _ (SDL.P pos))))) conf
+  | contains (areaRectangle conf) (fmap fromEnum pos)
+  = emit
+    $ ( case state of
+        SDL.Pressed  -> MousePressed
+        SDL.Released -> MouseReleased
+      )
+    $ fmap fromEnum pos
+    - position conf
 emitBasicSignal _ _ = return ()
 
 contains :: (Ord a, Num a) => SDL.Rectangle a -> Vect.V2 a -> Bool
