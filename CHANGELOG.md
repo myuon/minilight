@@ -1,5 +1,11 @@
 # Revision history for minilight
 
+## 0.2 -- 2019-04-23
+
+* New features:
+    * Re-structured modules
+    * Emit signals and signal handlers
+
 ## 0.1.1 -- 2019-04-14
 
 * Fixes:
