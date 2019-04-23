@@ -42,11 +42,12 @@ instance ComponentUnit MessageLayer where
 
     let cursorSize = div <$> CAnim.tileSize (cursor comp) <*> CAnim.division (CAnim.config (cursor comp))
     let windowSize = Basic.size $ CLayer.basic $ window $ config comp
+    let position = Basic.position $ CLayer.basic $ window $ config comp
 
     return
-      $ map (translate (Basic.position $ CLayer.basic $ window $ config comp)) $ baseLayer
-      ++ map (translate (Vect.V2 20 10)) textLayer
-      ++ map (translate (Vect.V2 ((windowSize ^. _x - cursorSize ^. _x) `div` 2) (windowSize ^. _y - cursorSize ^. _y))) cursorLayer
+      $ baseLayer
+      ++ map (translate (position + Vect.V2 20 10)) textLayer
+      ++ map (translate (position + Vect.V2 ((windowSize ^. _x - cursorSize ^. _x) `div` 2) (windowSize ^. _y - cursorSize ^. _y))) cursorLayer
 
 data Config = Config {
   engine :: CME.Config,

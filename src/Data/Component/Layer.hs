@@ -16,7 +16,7 @@ data Layer = Layer {
 }
 
 instance ComponentUnit Layer where
-  figures comp = return [layer comp]
+  figures comp = return $ Basic.wrapFigures (basic $ config comp) [layer comp]
 
 data Config = Config {
   basic :: Basic.Config,
@@ -30,7 +30,11 @@ instance FromJSON Config where
 new :: Config -> MiniLight Layer
 new conf = do
   pic <- picture (image conf)
-  return $ Layer {layer = pic, config = conf}
+
+  return $ Layer
+    { layer  = pic
+    , config = conf { basic = (basic conf) { Basic.size = getFigureSize pic } }
+    }
 
 newNineTile :: Config -> MiniLight Layer
 newNineTile conf = do
