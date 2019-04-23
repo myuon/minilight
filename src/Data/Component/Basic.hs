@@ -82,6 +82,10 @@ data Signal where
 
 instance EventType Signal
 
+-- | This automatically applies basic configuration such as: position.
+wrapFigures :: Config -> [Figure] -> [Figure]
+wrapFigures conf = map (translate (position conf))
+
 -- | This wrapper function is useful when you write your own 'onSignal' component.
 wrapSignal
   :: ( HasLightEnv env

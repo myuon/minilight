@@ -8,39 +8,34 @@ import Linear
 import MiniLight
 import qualified SDL
 import qualified SDL.Vect as Vect
+import qualified Data.Component.Basic as Basic
 
 data Layer = Layer {
-  layer :: Figure
+  layer :: Figure,
+  config :: Config
 }
 
 instance ComponentUnit Layer where
   figures comp = return [layer comp]
 
 data Config = Config {
-  image :: FilePath,
-  size :: Vect.V2 Int,
-  position :: Vect.V2 Int
+  basic :: Basic.Config,
+  image :: FilePath
 }
 
 instance FromJSON Config where
-  parseJSON = withObject "config" $ \v -> do
-    image <- v .: "image"
-    size <- withObject "size" (\v -> Vect.V2 <$> v .: "width" <*> v .: "height") =<< v .: "size"
-
-    positionMaybe <- v .:? "position"
-    position <- maybe (return 0) (withObject "position" (\v -> Vect.V2 <$> v .: "x" <*> v .: "y")) positionMaybe
-
-    return $ Config image size position
+  parseJSON = Basic.wrapConfig (\b l -> return $ Config b l) $ \v ->
+    v .: "image"
 
 new :: Config -> MiniLight Layer
 new conf = do
   pic <- picture (image conf)
-  return $ Layer {layer = pic}
+  return $ Layer {layer = pic, config = conf}
 
 newNineTile :: Config -> MiniLight Layer
 newNineTile conf = do
   pic <- picture $ image conf
-  let siz     = fmap toEnum $ size conf
+  let siz     = fmap toEnum $ Basic.size $ basic conf
   let tex     = texture pic
   let texSize = fmap toEnum $ getFigureSize pic
 
@@ -79,5 +74,5 @@ newNineTile conf = do
   SDL.rendererRenderTarget renderer SDL.$= Nothing
 
   tex <- fromTexture target
-  return $ Layer {layer = tex}
+  return $ Layer {layer = tex, config = conf}
 

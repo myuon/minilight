@@ -6,6 +6,7 @@ import Lens.Micro
 import Lens.Micro.Mtl
 import Linear
 import MiniLight
+import qualified Data.Component.Basic as Basic
 import qualified Data.Component.Layer as CLayer
 import qualified Data.Component.AnimationLayer as CAnim
 import qualified Data.Component.MessageEngine as CME
@@ -40,10 +41,10 @@ instance ComponentUnit MessageLayer where
     textLayer <- figures $ messageEngine comp
 
     let cursorSize = div <$> CAnim.tileSize (cursor comp) <*> CAnim.division (CAnim.config (cursor comp))
-    let windowSize = CLayer.size $ window $ config comp
+    let windowSize = Basic.size $ CLayer.basic $ window $ config comp
 
     return
-      $ map (translate (CLayer.position (window (config comp)))) $ baseLayer
+      $ map (translate (Basic.position $ CLayer.basic $ window $ config comp)) $ baseLayer
       ++ map (translate (Vect.V2 20 10)) textLayer
       ++ map (translate (Vect.V2 ((windowSize ^. _x - cursorSize ^. _x) `div` 2) (windowSize ^. _y - cursorSize ^. _y))) cursorLayer
 
