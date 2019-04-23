@@ -58,6 +58,9 @@ main = do
     runLightT $ do
       runMainloop
         id
-        ((defConfig resolver) { appConfigFile = Just "resources/app.yml" })
+        ( defConfig { appConfigFile     = Just "resources/app.yml"
+                    , componentResolver = resolver
+                    }
+        )
         (Game {sound = sound})
         return

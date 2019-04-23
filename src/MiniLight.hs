@@ -52,7 +52,7 @@ data LoopConfig = LoopConfig {
   additionalComponents :: [Component]  -- ^ The components here would be added during the initialization.
 }
 
--- | Default configurations for the mainloop.
+-- | Default configurations for the mainloop. You need to set @componentResolver@ if you use a component.
 defConfig :: LoopConfig
 defConfig = LoopConfig
   { watchKeys            = Nothing

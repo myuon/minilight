@@ -115,9 +115,10 @@ main = do
 
     runMainloop
       id
-      ( (defConfig resolver) { appConfigFile        = Nothing
-                             , additionalComponents = []
-                             }
+      ( defConfig { appConfigFile        = Nothing
+                  , additionalComponents = []
+                  , componentResolver    = resolver
+                  }
       )
       (Game {objects = objs, pic = pic})
       (execStateT mainloop)

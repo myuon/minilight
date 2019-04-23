@@ -44,9 +44,10 @@ main = do
 
     runMainloop
       id
-      ( (defConfig resolver) { appConfigFile        = Nothing
-                             , additionalComponents = [button]
-                             }
+      ( defConfig { appConfigFile        = Nothing
+                  , additionalComponents = [button]
+                  , componentResolver    = resolver
+                  }
       )
       ()
       return
