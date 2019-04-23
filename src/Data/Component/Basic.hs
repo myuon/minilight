@@ -25,7 +25,8 @@ data Config = Config {
   position :: Vect.V2 Int,
   color :: Vect.V4 Word8,
   fontDesc :: FontDescriptor,
-  fontSize :: Int
+  fontSize :: Int,
+  fontColor :: Vect.V4 Word8
 }
 
 instance FromJSON Config where
@@ -41,15 +42,16 @@ instance FromJSON Config where
     color <- fmap (\[r,g,b,a] -> Vect.V4 r g b a) $ v .:? "color" .!= [255, 255, 255, 255]
 
     fontMaybe <- v .:? "font"
-    (fontDesc, fontSize) <- (\w -> maybe (return (FontDescriptor "" (FontStyle False False), 0)) w fontMaybe) $ withObject "font" $ \v -> do
+    (fontDesc, fontSize, fontColor) <- (\w -> maybe (return (FontDescriptor "" (FontStyle False False), 0, Vect.V4 0 0 0 255)) w fontMaybe) $ withObject "font" $ \v -> do
       family <- v .: "family"
       size <- v .: "size"
       bold <- v .:? "bold" .!= False
       italic <- v .:? "italic" .!= False
+      [r,g,b,a] <- v .:? "color" .!= [0, 0, 0, 255]
 
-      return $ (FontDescriptor family (FontStyle bold italic), size)
+      return $ (FontDescriptor family (FontStyle bold italic), size, Vect.V4 r g b a)
 
-    return $ Config size position color fontDesc fontSize
+    return $ Config size position color fontDesc fontSize fontColor
 
 -- | Load a system font from 'Config' type.
 loadFontFrom :: Config -> MiniLight SDL.Font.Font
