@@ -45,6 +45,7 @@ library
     Data.Component.MessageEngine
     Data.Component.MessageLayer
     Data.Component.Button
+    Data.Component.Selection
     Data.Component.Resolver
   -- other-modules:
   -- other-extensions:
