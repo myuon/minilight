@@ -39,6 +39,9 @@ library
     MiniLight.Component
     MiniLight.Component.Types
     MiniLight.Component.Loader
+    Data.Config.Font
+    Data.Config.Position
+    Data.Config.Size
     Data.Component.Basic
     Data.Component.Layer
     Data.Component.AnimationLayer
