@@ -2,6 +2,7 @@ module Data.Component.Selection where
 
 import Control.Monad.State
 import Data.Aeson hiding ((.=))
+import qualified Data.Config.Font as Font
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import Lens.Micro
@@ -28,7 +29,7 @@ instance ComponentUnit Selection where
 
   figures comp = do
     let p = Vect.V2 15 10
-    textTextures <- V.forM (V.indexed $ labels $ conf comp) $ \(i,label) -> liftMiniLight $ fmap (translate (p + Vect.V2 0 (i * 30))) $ text (font comp) (Basic.fontColor $ basic $ conf comp) label
+    textTextures <- V.forM (V.indexed $ labels $ conf comp) $ \(i,label) -> liftMiniLight $ fmap (translate (p + Vect.V2 0 (i * 30))) $ text (font comp) (Font.color $ fontConfig $ conf comp) label
     base <- figures (layer comp)
     highlight <- liftMiniLight $ rectangleFilled (Vect.V4 240 240 240 40) $ _y .~ 30 $ Basic.size (basic (conf comp))
 
@@ -49,18 +50,20 @@ instance ComponentUnit Selection where
 data Config = Config {
   basic :: Basic.Config,
   labels :: V.Vector T.Text,
+  fontConfig :: Font.Config,
   image :: FilePath
 }
 
 instance FromJSON Config where
-  parseJSON = Basic.wrapConfig (\b (l,i) -> return $ Config b l i) $ \v -> do
-    labels <- v .: "labels" .!= V.empty
-    image <- v .: "image"
-
-    return (labels, image)
+  parseJSON = withObject "selection" $ \v ->
+    Config
+      <$> parseJSON (Object v)
+      <*> v .:? "labels" .!= V.empty
+      <*> parseJSON (Object v)
+      <*> v .: "image"
 
 new :: Config -> MiniLight Selection
 new conf = do
-  font  <- Basic.loadFontFrom (basic conf)
+  font  <- Font.loadFontFrom (fontConfig conf)
   layer <- Layer.newNineTile $ Layer.Config (basic conf) (image conf)
   return $ Selection {font = font, conf = conf, hover = Nothing, layer = layer}

@@ -3,6 +3,7 @@ module Data.Config.Font where
 import Data.Aeson
 import Data.Word (Word8)
 import MiniLight
+import qualified SDL.Font
 import qualified SDL.Vect as Vect
 
 data Config = Config {
@@ -25,3 +26,7 @@ instance FromJSON Config where
         [r,g,b,a] <- v .:? "color" .!= [0, 0, 0, 255]
 
         return $ Config (FontDescriptor family (FontStyle bold italic)) size (Vect.V4 r g b a)
+
+-- | Load a system font from 'Config' type.
+loadFontFrom :: Config -> MiniLight SDL.Font.Font
+loadFontFrom conf = loadFont (descriptor conf) (size conf)

@@ -13,20 +13,14 @@ module Data.Component.Basic where
 import Data.Aeson
 import Data.Aeson.Types
 import Data.Typeable
-import Data.Word (Word8)
 import qualified SDL
 import qualified SDL.Vect as Vect
-import qualified SDL.Font
 import MiniLight
 
 -- | Basic config type
 data Config = Config {
   size :: Vect.V2 Int,
-  position :: Vect.V2 Int,
-  color :: Vect.V4 Word8,
-  fontDesc :: FontDescriptor,
-  fontSize :: Int,
-  fontColor :: Vect.V4 Word8
+  position :: Vect.V2 Int
 }
 
 instance FromJSON Config where
@@ -39,23 +33,7 @@ instance FromJSON Config where
     position <- (\w -> maybe (return 0) w positionMaybe) $ withObject "position" $ \v ->
       Vect.V2 <$> v .: "x" <*> v .: "y"
 
-    color <- fmap (\[r,g,b,a] -> Vect.V4 r g b a) $ v .:? "color" .!= [255, 255, 255, 255]
-
-    fontMaybe <- v .:? "font"
-    (fontDesc, fontSize, fontColor) <- (\w -> maybe (return (FontDescriptor "" (FontStyle False False), 0, Vect.V4 0 0 0 255)) w fontMaybe) $ withObject "font" $ \v -> do
-      family <- v .: "family"
-      size <- v .: "size"
-      bold <- v .:? "bold" .!= False
-      italic <- v .:? "italic" .!= False
-      [r,g,b,a] <- v .:? "color" .!= [0, 0, 0, 255]
-
-      return $ (FontDescriptor family (FontStyle bold italic), size, Vect.V4 r g b a)
-
-    return $ Config size position color fontDesc fontSize fontColor
-
--- | Load a system font from 'Config' type.
-loadFontFrom :: Config -> MiniLight SDL.Font.Font
-loadFontFrom conf = loadFont (fontDesc conf) (fontSize conf)
+    return $ Config size position
 
 -- | This wrapper function is useful when you write your component config parser.
 wrapConfig
