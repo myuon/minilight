@@ -39,6 +39,7 @@ library
     MiniLight.Component
     MiniLight.Component.Types
     MiniLight.Component.Loader
+    Data.Config.Color
     Data.Config.Font
     Data.Config.Position
     Data.Config.Size
