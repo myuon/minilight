@@ -132,23 +132,23 @@ runMainloop conv conf initial loop = do
   events      <- liftIO $ newIORef []
   signalQueue <- liftIO $ newIORef []
 
-  case (hotConfigReplacement conf, appConfigFile conf) of
+  mayMgr      <- case (hotConfigReplacement conf, appConfigFile conf) of
     (Just dir, Just confPath) -> do
       renderer  <- view rendererL
       fontCache <- view fontCacheL
+      mgr       <- liftIO Notify.startManager
 
-      liftIO
-        $ Notify.withManager
-        $ \mgr -> Notify.watchDir mgr dir (const True) $ \_ -> do
-            comps <-
-              flip runReaderT (LightEnv renderer fontCache)
-              $   runLightT'
-              $   fromList
-              =<< loadAppConfig confPath (componentResolver conf)
-            forM_ [0 .. VM.length comps - 1]
-              $ \i -> VM.read comps i >>= VM.write components i
-      return ()
-    _ -> return ()
+      liftIO $ Notify.watchDir mgr dir (const True) $ \ev -> do
+        comps <-
+          flip runReaderT (LightEnv renderer fontCache)
+          $   runLightT'
+          $   fromList
+          =<< loadAppConfig confPath (componentResolver conf)
+
+        forM_ [0 .. VM.length comps - 1]
+          $ \i -> VM.read comps i >>= VM.write components i
+      return (Just mgr)
+    _ -> return Nothing
 
   env <- view id
   go
@@ -161,6 +161,8 @@ runMainloop conv conf initial loop = do
       }
     )
     initial
+
+  liftIO $ maybe (return ()) Notify.stopManager mayMgr
  where
   go loopState s = do
     renderer <- view rendererL
