@@ -213,15 +213,17 @@ runMainloop conv conf initial loop = do
           events
         liftIO $ VM.write (components loopState) i comp'
 
-    let
-      specifiedKeys = HM.mapWithKey
-        (\k v -> if keys k then v + 1 else 0)
-        ( maybe
-            id
-            (\specified m -> HM.fromList $ map (\s -> (s, m HM.! s)) specified)
-            (watchKeys conf)
-        $ keyStates loopState
-        )
+    let specifiedKeys = HM.mapWithKey
+          (\k v -> if keys k then v + 1 else 0)
+          ( maybe
+              id
+              ( \specified m -> HM.fromList $ map
+                (\s -> (s, if HM.member s m then m HM.! s else 0))
+                specified
+              )
+              (watchKeys conf)
+          $ keyStates loopState
+          )
     let loopState' = loopState { keyStates = specifiedKeys }
     let quit = any
           ( \event -> case SDL.eventPayload event of
