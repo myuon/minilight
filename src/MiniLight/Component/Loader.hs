@@ -4,7 +4,6 @@ module MiniLight.Component.Loader where
 import Control.Monad.IO.Class
 import Data.Aeson hiding (Result)
 import qualified Data.Text as T
-import qualified Data.Vector as V
 import Data.Yaml (decodeFileEither)
 import GHC.Generics
 import MiniLight.Light
@@ -39,4 +38,3 @@ loadAppConfig path mapper = do
     .   either (error . show) id
     <$> decodeFileEither path
   mapM (\conf -> mapper (name conf) (properties conf)) (app conf)
-

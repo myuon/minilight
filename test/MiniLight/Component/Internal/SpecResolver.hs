@@ -1,10 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-module MiniLight.Component.SpecLoader where
+module MiniLight.Component.Internal.SpecResolver where
 
 import Data.Aeson hiding (Success, Failure)
 import Data.Yaml.TH
-import MiniLight.Component.Loader
+import MiniLight.Component.Internal.Resolver
 import Test.Tasty.Hspec hiding (Failure, Success)
 import Text.Trifecta
 
