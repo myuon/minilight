@@ -31,6 +31,7 @@ import MiniLight.Component
 import MiniLight.Event
 import MiniLight.Figure
 import MiniLight.Light
+import qualified System.FSNotify as Notify
 import qualified SDL
 import qualified SDL.Font
 
@@ -48,6 +49,7 @@ runLightT prog = withSDL $ withWindow $ \window -> do
 data LoopConfig = LoopConfig {
   watchKeys :: Maybe [SDL.Scancode],  -- ^ Set @Nothing@ if all keys should be watched. See also 'LoopState'.
   appConfigFile :: Maybe FilePath,  -- ^ Specify a yaml file which describes component settings. See 'MiniLight.Component' for the yaml syntax.
+  hotConfigReplacement :: Maybe FilePath,  -- ^ The directory path to be watched. If set, the config file modification will replace the component dynamically.
   componentResolver :: T.Text -> Aeson.Value -> MiniLight Component,  -- ^ Your custom mappings between a component name and its type.
   additionalComponents :: [Component]  -- ^ The components here would be added during the initialization.
 }
@@ -57,6 +59,7 @@ defConfig :: LoopConfig
 defConfig = LoopConfig
   { watchKeys            = Nothing
   , appConfigFile        = Nothing
+  , hotConfigReplacement = Nothing
   , componentResolver    = \_ _ -> undefined
   , additionalComponents = []
   }
@@ -129,7 +132,25 @@ runMainloop conv conf initial loop = do
   events      <- liftIO $ newIORef []
   signalQueue <- liftIO $ newIORef []
 
-  env         <- view id
+  case (hotConfigReplacement conf, appConfigFile conf) of
+    (Just dir, Just confPath) -> do
+      renderer  <- view rendererL
+      fontCache <- view fontCacheL
+
+      liftIO
+        $ Notify.withManager
+        $ \mgr -> Notify.watchDir mgr dir (const True) $ \_ -> do
+            comps <-
+              flip runReaderT (LightEnv renderer fontCache)
+              $   runLightT'
+              $   fromList
+              =<< loadAppConfig confPath (componentResolver conf)
+            forM_ [0 .. VM.length comps - 1]
+              $ \i -> VM.read comps i >>= VM.write components i
+      return ()
+    _ -> return ()
+
+  env <- view id
   go
     ( LoopState
       { keyStates   = HM.empty
