@@ -1,27 +1,17 @@
-{-# LANGUAGE DeriveGeneric #-}
-module MiniLight.Component.Loader where
+module MiniLight.Component.Loader (
+  module MiniLight.Component.Internal.Types,
+
+  loadAppConfig,
+) where
 
 import Control.Monad.IO.Class
 import Data.Aeson hiding (Result)
 import qualified Data.Text as T
 import Data.Yaml (decodeFileEither)
-import GHC.Generics
 import MiniLight.Light
 import MiniLight.Component.Types
+import MiniLight.Component.Internal.Types
 import MiniLight.Component.Internal.Resolver (resolve)
-
-data ComponentConfig = ComponentConfig {
-  name :: T.Text,
-  properties :: Value
-} deriving Generic
-
-instance FromJSON ComponentConfig
-
-data AppConfig = AppConfig {
-  app :: [ComponentConfig]
-} deriving Generic
-
-instance FromJSON AppConfig
 
 -- | Load an config file and construct components.
 loadAppConfig
