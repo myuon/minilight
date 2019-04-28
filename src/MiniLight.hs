@@ -219,8 +219,10 @@ runMainloop conv conf initial loop = do
           )
         $ \ev -> do
             confs0 <- liftIO $ readIORef (appConfig loopState)
-            confs  <- decodeAndResolveConfig "resources/app.yml"
-            liftIO $ print $ diff confs0 confs
+            decodeAndResolveConfig "resources/app.yml" >>= \case
+              Left err -> liftIO $ print err
+              Right confs -> do
+                liftIO $ print $ diff confs0 confs
 
     let specifiedKeys = HM.mapWithKey
           (\k v -> if keys k then v + 1 else 0)
