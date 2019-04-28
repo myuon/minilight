@@ -78,7 +78,8 @@ data LoopEnv env = LoopState {
   keyStates :: HM.HashMap SDL.Scancode Int,
   events :: MVar [Event],
   signalQueue :: IORef [Event],
-  components :: VM.IOVector Component
+  components :: VM.IOVector Component,
+  appConfig :: IORef AppConfig
 }
 
 -- | Lens to the env inside 'LoopState'
@@ -126,24 +127,26 @@ runMainloop
   -> (s -> LightT loop m s)  -- ^ a function called in every loop
   -> LightT env m ()
 runMainloop conv conf initial loop = do
-  components <-
-    liftMiniLight $ fromList . (++ additionalComponents conf) =<< maybe
-      (return [])
-      (flip loadAppConfig (componentResolver conf))
-      (appConfigFile conf)
-  events      <- liftIO $ newMVar []
-  signalQueue <- liftIO $ newIORef []
+  events                  <- liftIO $ newMVar []
+  signalQueue             <- liftIO $ newIORef []
 
-  case (hotConfigReplacement conf, appConfigFile conf) of
-    (Just dir, Just _) ->
-      liftIO $ void $ forkIO $ Notify.withManager $ \mgr -> do
-        _ <- Notify.watchDir mgr dir (const True) $ \ev -> do
-          modifyMVar_ events $ return . (NotifyEvent ev :)
+  (componentList, config) <-
+    case (hotConfigReplacement conf, appConfigFile conf) of
+      (Just dir, Just confPath) -> do
+        liftIO $ void $ forkIO $ Notify.withManager $ \mgr -> do
+          _ <- Notify.watchDir mgr dir (const True) $ \ev -> do
+            modifyMVar_ events $ return . (NotifyEvent ev :)
 
-        forever $ threadDelay 1000000
-    _ -> return ()
+          forever $ threadDelay 1000000
 
-  env <- view id
+        (,)
+          <$> liftMiniLight (loadAppConfig confPath (componentResolver conf))
+          <*> (liftIO . newIORef =<< decodeAndResolveConfig confPath)
+      _ -> (,) <$> pure [] <*> liftIO (newIORef (AppConfig []))
+
+  components <- fromList (additionalComponents conf ++ componentList)
+
+  env        <- view id
   go
     ( LoopState
       { keyStates   = HM.empty
@@ -151,6 +154,7 @@ runMainloop conv conf initial loop = do
       , signalQueue = signalQueue
       , env         = env
       , components  = components
+      , appConfig   = config
       }
     )
     initial
@@ -215,10 +219,9 @@ runMainloop conv conf initial loop = do
             events
           )
         $ \ev -> do
-            liftIO $ print ev
-
-            confs <- decodeAndResolveConfig "resources/app.yml"
-            liftIO $ print confs
+            confs0 <- liftIO $ readIORef (appConfig loopState)
+            confs  <- decodeAndResolveConfig "resources/app.yml"
+            liftIO $ print $ diff confs0 confs
 
     let specifiedKeys = HM.mapWithKey
           (\k v -> if keys k then v + 1 else 0)
