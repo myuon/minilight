@@ -2,8 +2,8 @@
 module MiniLight.Component.Internal.Types where
 
 import Data.Aeson
-import GHC.Generics
 import qualified Data.Text as T
+import GHC.Generics
 
 data ComponentConfig = ComponentConfig {
   name :: T.Text,

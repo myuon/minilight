@@ -41,15 +41,7 @@ In each field, you can specify an expression defined in the loader.
 module MiniLight.Component (
   module MiniLight.Component.Types,
   module MiniLight.Component.Loader,
-
-  Resolver,
 ) where
 
-import qualified Data.Aeson as Aeson
-import qualified Data.Text as T
-import MiniLight.Light
 import MiniLight.Component.Types
 import MiniLight.Component.Loader
-
-type Resolver = T.Text -> Aeson.Value -> MiniLight Component
-

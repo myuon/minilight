@@ -40,7 +40,8 @@ new = do
 main :: IO ()
 main = do
   runLightT $ do
-    button <- newComponent =<< new
+    uid    <- newUID
+    button <- newComponent uid =<< new
 
     runMainloop
       id

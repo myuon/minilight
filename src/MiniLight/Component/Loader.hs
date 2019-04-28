@@ -5,11 +5,12 @@ module MiniLight.Component.Loader (
   decodeAndResolveConfig,
   loadAppConfig,
   loadAppConfig_,
+  assignUID,
 ) where
 
 import Control.Monad.IO.Class
 import Data.Aeson
-import qualified Data.Text as T
+import Data.Maybe (fromJust)
 import Data.Yaml (decodeFileEither)
 import MiniLight.Light
 import MiniLight.Component.Types
@@ -31,24 +32,37 @@ decodeAndResolveConfig path =
     .   either (error . show) id
     <$> decodeFileEither path
 
--- | Load an config file and return with the constructed components.
+-- | Load an config file and return it with the constructed components.
 -- This will cause a runtime exception if the config file cannot be parsed.
+-- This function also assign unique IDs for each component, using 'assignUID'.
 loadAppConfig
   :: (HasLightEnv env, MonadIO m)
   => FilePath  -- ^ Filepath to the yaml file.
-  -> (T.Text -> Value -> LightT env m Component)  -- ^ Specify any resolver.
+  -> Resolver  -- ^ Specify any resolver.
   -> LightT env m (AppConfig, [Component])
 loadAppConfig path mapper = do
-  decodeAndResolveConfig path >>= \case
+  decodeAndResolveConfig path >>= sequence . fmap assignUID >>= \case
     Left  err  -> error err
     Right conf -> (,) <$> pure conf <*> mapM
-      (\conf -> mapper (name conf) (properties conf))
+      ( \conf -> liftMiniLight
+        $ mapper (name conf) (fromJust $ uid conf) (properties conf)
+      )
       (app conf)
 
 -- | A variant of 'loadAppConfig', if you don't need @AppConfig@.
 loadAppConfig_
   :: (HasLightEnv env, MonadIO m)
   => FilePath  -- ^ Filepath to the yaml file.
-  -> (T.Text -> Value -> LightT env m Component)  -- ^ Specify any resolver.
+  -> Resolver  -- ^ Specify any resolver.
   -> LightT env m [Component]
 loadAppConfig_ path mapper = fmap snd $ loadAppConfig path mapper
+
+-- | Assign unique IDs to each component configuration.
+assignUID :: MonadIO m => AppConfig -> m AppConfig
+assignUID (AppConfig cs) = liftIO $ fmap AppConfig $ mapM
+  ( \conf ->
+    maybe (newUID >>= \uid -> return (conf { uid = Just uid }))
+          (\_ -> return conf)
+      $ uid conf
+  )
+  cs

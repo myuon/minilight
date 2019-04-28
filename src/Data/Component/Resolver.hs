@@ -22,18 +22,19 @@ foldResult f g r = case r of
 
 -- | Pre-defined resolver supports all components in this library.
 resolver :: Resolver
-resolver name props = case name of
-  "animation-layer" ->
-    newComponent =<< AnimationLayer.new (foldResult error id $ fromJSON props)
+resolver name uid props = case name of
+  "animation-layer" -> newComponent uid
+    =<< AnimationLayer.new (foldResult error id $ fromJSON props)
   "button" ->
-    newComponent =<< Button.new (foldResult error id $ fromJSON props)
-  "layer" -> newComponent =<< Layer.new (foldResult error id $ fromJSON props)
-  "message-engine" ->
-    newComponent =<< MessageEngine.new (foldResult error id $ fromJSON props)
+    newComponent uid =<< Button.new (foldResult error id $ fromJSON props)
+  "layer" ->
+    newComponent uid =<< Layer.new (foldResult error id $ fromJSON props)
+  "message-engine" -> newComponent uid
+    =<< MessageEngine.new (foldResult error id $ fromJSON props)
   "message-layer" ->
-    newComponent =<< MessageLayer.new (foldResult error id $ fromJSON props)
-  "tiled-layer" ->
-    newComponent =<< Layer.newNineTile (foldResult error id $ fromJSON props)
+    newComponent uid =<< MessageLayer.new (foldResult error id $ fromJSON props)
+  "tiled-layer" -> newComponent uid
+    =<< Layer.newNineTile (foldResult error id $ fromJSON props)
   "selection" ->
-    newComponent =<< Selection.new (foldResult error id $ fromJSON props)
+    newComponent uid =<< Selection.new (foldResult error id $ fromJSON props)
   _ -> error $ T.unpack $ "Component not defined: `" <> name <> "`"

@@ -18,7 +18,6 @@ import Control.Concurrent (threadDelay, forkIO)
 import Control.Concurrent.MVar
 import Control.Monad.Catch
 import Control.Monad.Reader
-import qualified Data.Aeson as Aeson
 import Data.Foldable (foldlM)
 import Data.Hashable (Hashable(..))
 import qualified Data.HashMap.Strict as HM
@@ -52,7 +51,7 @@ data LoopConfig = LoopConfig {
   watchKeys :: Maybe [SDL.Scancode],  -- ^ Set @Nothing@ if all keys should be watched. See also 'LoopState'.
   appConfigFile :: Maybe FilePath,  -- ^ Specify a yaml file which describes component settings. See 'MiniLight.Component' for the yaml syntax.
   hotConfigReplacement :: Maybe FilePath,  -- ^ The directory path to be watched. If set, the config file modification will replace the component dynamically.
-  componentResolver :: T.Text -> Aeson.Value -> MiniLight Component,  -- ^ Your custom mappings between a component name and its type.
+  componentResolver :: Resolver,  -- ^ Your custom mappings between a component name and its type.
   additionalComponents :: [Component]  -- ^ The components here would be added during the initialization.
 }
 
@@ -220,7 +219,7 @@ runMainloop conv conf initial loop = do
         $ \ev -> do
             confs0 <- liftIO $ readIORef (appConfig loopState)
             decodeAndResolveConfig "resources/app.yml" >>= \case
-              Left err -> liftIO $ print err
+              Left  err   -> liftIO $ print err
               Right confs -> do
                 liftIO $ print $ diff confs0 confs
 
