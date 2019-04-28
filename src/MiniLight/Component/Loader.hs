@@ -2,7 +2,8 @@ module MiniLight.Component.Loader (
   module MiniLight.Component.Internal.Types,
   module MiniLight.Component.Internal.Diff,
 
-  decodeAndResolveConfig,
+  resolveConfig,
+  resolveAndAssignUIDConfig,
   loadAppConfig,
   loadAppConfig_,
   assignUID,
@@ -23,14 +24,23 @@ toEither (Error   s) = Left s
 toEither (Success a) = Right a
 
 -- | Load an config file and return the resolved @AppConfig@.
-decodeAndResolveConfig :: MonadIO m => FilePath -> m (Either String AppConfig)
-decodeAndResolveConfig path =
+resolveConfig :: MonadIO m => FilePath -> m (Either String AppConfig)
+resolveConfig path =
   liftIO
     $   toEither
     .   fromJSON
     .   resolve
     .   either (error . show) id
     <$> decodeFileEither path
+
+-- | Perform 'resolveConfig' and 'assignUID'.
+-- @
+-- resolveAndAssignUIDConfig path = resolveConfig path >>= sequence . fmap assignUID
+-- @
+resolveAndAssignUIDConfig
+  :: MonadIO m => FilePath -> m (Either String AppConfig)
+resolveAndAssignUIDConfig path =
+  resolveConfig path >>= sequence . fmap assignUID
 
 -- | Load an config file and return it with the constructed components.
 -- This will cause a runtime exception if the config file cannot be parsed.
@@ -41,7 +51,7 @@ loadAppConfig
   -> Resolver  -- ^ Specify any resolver.
   -> LightT env m (AppConfig, [Component])
 loadAppConfig path mapper = do
-  decodeAndResolveConfig path >>= sequence . fmap assignUID >>= \case
+  resolveAndAssignUIDConfig path >>= \case
     Left  err  -> error err
     Right conf -> (,) <$> pure conf <*> mapM
       ( \conf -> liftMiniLight

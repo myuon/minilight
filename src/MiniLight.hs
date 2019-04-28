@@ -218,7 +218,7 @@ runMainloop conv conf initial loop = do
           )
         $ \ev -> do
             confs0 <- liftIO $ readIORef (appConfig loopState)
-            decodeAndResolveConfig "resources/app.yml" >>= \case
+            resolveConfig "resources/app.yml" >>= \case
               Left  err   -> liftIO $ print err
               Right confs -> do
                 liftIO $ print $ diff confs0 confs
