@@ -26,12 +26,21 @@ decodeAndResolveConfig path =
     .   either (error . show) id
     <$> decodeFileEither path
 
--- | Load an config file and construct components.
+-- | Load an config file and return with the constructed components.
 loadAppConfig
   :: (HasLightEnv env, MonadIO m)
   => FilePath  -- ^ Filepath to the yaml file.
   -> (T.Text -> Value -> LightT env m Component)  -- ^ Specify any resolver.
-  -> LightT env m [Component]
+  -> LightT env m (AppConfig, [Component])
 loadAppConfig path mapper = do
   conf <- decodeAndResolveConfig path
-  mapM (\conf -> mapper (name conf) (properties conf)) (app conf)
+  (,) <$> pure conf <*> mapM (\conf -> mapper (name conf) (properties conf))
+                             (app conf)
+
+-- | A variant of 'loadAppConfig', if you don't need @AppConfig@.
+loadAppConfig_
+  :: (HasLightEnv env, MonadIO m)
+  => FilePath  -- ^ Filepath to the yaml file.
+  -> (T.Text -> Value -> LightT env m Component)  -- ^ Specify any resolver.
+  -> LightT env m [Component]
+loadAppConfig_ path mapper = fmap snd $ loadAppConfig path mapper

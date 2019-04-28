@@ -127,10 +127,10 @@ runMainloop
   -> (s -> LightT loop m s)  -- ^ a function called in every loop
   -> LightT env m ()
 runMainloop conv conf initial loop = do
-  events                  <- liftIO $ newMVar []
-  signalQueue             <- liftIO $ newIORef []
+  events                     <- liftIO $ newMVar []
+  signalQueue                <- liftIO $ newIORef []
 
-  (componentList, config) <-
+  (appConfig, componentList) <-
     case (hotConfigReplacement conf, appConfigFile conf) of
       (Just dir, Just confPath) -> do
         liftIO $ void $ forkIO $ Notify.withManager $ \mgr -> do
@@ -139,12 +139,11 @@ runMainloop conv conf initial loop = do
 
           forever $ threadDelay 1000000
 
-        (,)
-          <$> liftMiniLight (loadAppConfig confPath (componentResolver conf))
-          <*> (liftIO . newIORef =<< decodeAndResolveConfig confPath)
-      _ -> (,) <$> pure [] <*> liftIO (newIORef (AppConfig []))
+        liftMiniLight (loadAppConfig confPath (componentResolver conf))
+      _ -> return (AppConfig [], [])
 
   components <- fromList (additionalComponents conf ++ componentList)
+  config     <- liftIO $ newIORef appConfig
 
   env        <- view id
   go
