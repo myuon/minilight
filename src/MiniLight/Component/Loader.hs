@@ -1,6 +1,8 @@
 module MiniLight.Component.Loader (
   module MiniLight.Component.Internal.Types,
+  module MiniLight.Component.Internal.Diff,
 
+  decodeAndResolveConfig,
   loadAppConfig,
 ) where
 
@@ -11,7 +13,18 @@ import Data.Yaml (decodeFileEither)
 import MiniLight.Light
 import MiniLight.Component.Types
 import MiniLight.Component.Internal.Types
+import MiniLight.Component.Internal.Diff
 import MiniLight.Component.Internal.Resolver (resolve)
+
+-- | Load an config file and return the resolved @AppConfig@.
+decodeAndResolveConfig :: MonadIO m => FilePath -> m AppConfig
+decodeAndResolveConfig path =
+  liftIO
+    $   (\(Data.Aeson.Success a) -> a)
+    .   fromJSON
+    .   resolve
+    .   either (error . show) id
+    <$> decodeFileEither path
 
 -- | Load an config file and construct components.
 loadAppConfig
@@ -20,11 +33,5 @@ loadAppConfig
   -> (T.Text -> Value -> LightT env m Component)  -- ^ Specify any resolver.
   -> LightT env m [Component]
 loadAppConfig path mapper = do
-  conf <-
-    liftIO
-    $   (\(Data.Aeson.Success a) -> a)
-    .   fromJSON
-    .   resolve
-    .   either (error . show) id
-    <$> decodeFileEither path
+  conf <- decodeAndResolveConfig path
   mapM (\conf -> mapper (name conf) (properties conf)) (app conf)

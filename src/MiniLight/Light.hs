@@ -21,6 +21,7 @@ module MiniLight.Light (
   MonadIO(..),
 ) where
 
+import Control.Concurrent.MVar
 import Control.Monad.IO.Class
 import Control.Monad.Catch
 import Control.Monad.Reader
@@ -84,7 +85,7 @@ class HasLoopEnv env where
   keyStatesL :: Lens' env (HM.HashMap SDL.Scancode Int)
 
   -- | Occurred events since the last frame.
-  eventsL :: Lens' env (IORef [Event])
+  eventsL :: Lens' env (MVar [Event])
 
   -- | A queue storing the events occurred in this frame.
   signalQueueL :: Lens' env (IORef [Event])

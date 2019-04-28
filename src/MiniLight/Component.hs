@@ -40,7 +40,7 @@ In each field, you can specify an expression defined in the loader.
 -}
 module MiniLight.Component (
   module MiniLight.Component.Types,
-  loadAppConfig,
+  module MiniLight.Component.Loader,
 
   Resolver,
 ) where

@@ -13,6 +13,7 @@ import qualified SDL
 import qualified Data.Text as T
 import Data.Type.Equality
 import Type.Reflection
+import qualified System.FSNotify as Notify
 
 -- | EventType says some type can be used as an event type.
 class Typeable e => EventType e
@@ -34,6 +35,7 @@ data Event
   = Never
   | Signal T.Text Dynamic
   | RawEvent SDL.Event
+  | NotifyEvent Notify.Event
 
 signal :: EventType a => T.Text -> a -> Event
 signal t v = Signal t (toDyn v)

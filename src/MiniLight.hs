@@ -14,13 +14,15 @@ module MiniLight (
   runMainloop,
 ) where
 
-import Control.Concurrent (threadDelay)
+import Control.Concurrent (threadDelay, forkIO)
+import Control.Concurrent.MVar
 import Control.Monad.Catch
 import Control.Monad.Reader
 import qualified Data.Aeson as Aeson
 import Data.Foldable (foldlM)
 import Data.Hashable (Hashable(..))
 import qualified Data.HashMap.Strict as HM
+import Data.Maybe
 import Data.IORef
 import qualified Data.Text as T
 import qualified Data.Vector.Mutable as VM
@@ -74,7 +76,7 @@ fromList xs = liftIO $ do
 data LoopEnv env = LoopState {
   env :: env,
   keyStates :: HM.HashMap SDL.Scancode Int,
-  events :: IORef [Event],
+  events :: MVar [Event],
   signalQueue :: IORef [Event],
   components :: VM.IOVector Component
 }
@@ -129,26 +131,17 @@ runMainloop conv conf initial loop = do
       (return [])
       (flip loadAppConfig (componentResolver conf))
       (appConfigFile conf)
-  events      <- liftIO $ newIORef []
+  events      <- liftIO $ newMVar []
   signalQueue <- liftIO $ newIORef []
 
-  mayMgr      <- case (hotConfigReplacement conf, appConfigFile conf) of
-    (Just dir, Just confPath) -> do
-      renderer  <- view rendererL
-      fontCache <- view fontCacheL
-      mgr       <- liftIO Notify.startManager
+  case (hotConfigReplacement conf, appConfigFile conf) of
+    (Just dir, Just _) ->
+      liftIO $ void $ forkIO $ Notify.withManager $ \mgr -> do
+        _ <- Notify.watchDir mgr dir (const True) $ \ev -> do
+          modifyMVar_ events $ return . (NotifyEvent ev :)
 
-      liftIO $ Notify.watchDir mgr dir (const True) $ \ev -> do
-        comps <-
-          flip runReaderT (LightEnv renderer fontCache)
-          $   runLightT'
-          $   fromList
-          =<< loadAppConfig confPath (componentResolver conf)
-
-        forM_ [0 .. VM.length comps - 1]
-          $ \i -> VM.read comps i >>= VM.write components i
-      return (Just mgr)
-    _ -> return Nothing
+        forever $ threadDelay 1000000
+    _ -> return ()
 
   env <- view id
   go
@@ -161,8 +154,6 @@ runMainloop conv conf initial loop = do
       }
     )
     initial
-
-  liftIO $ maybe (return ()) Notify.stopManager mayMgr
  where
   go loopState s = do
     renderer <- view rendererL
@@ -193,17 +184,19 @@ runMainloop conv conf initial loop = do
     keys   <- SDL.getKeyboardState
 
     envLightT (\env -> conv $ loopState { env = env }) $ do
-      evref <- view eventsL
-      liftIO $ writeIORef evref $ map RawEvent events
-
+      evref   <- view eventsL
       sigref  <- view signalQueueL
       signals <- liftIO $ readIORef sigref
-      liftIO $ modifyIORef evref $ (++ signals)
+      liftIO
+        $ modifyMVar_ evref
+        $ return
+        . (map RawEvent events ++)
+        . (signals ++)
       liftIO $ writeIORef sigref []
 
     envLightT (\env -> conv $ loopState { env = env }) $ do
       evref  <- view eventsL
-      events <- liftIO $ readIORef evref
+      events <- liftIO $ modifyMVar evref (\a -> return ([], a))
 
       forM_ [0 .. VM.length (components loopState) - 1] $ \i -> do
         comp  <- liftIO $ VM.read (components loopState) i
@@ -212,6 +205,20 @@ runMainloop conv conf initial loop = do
           comp
           events
         liftIO $ VM.write (components loopState) i comp'
+
+      forM_
+          ( catMaybes $ map
+            ( \e -> case e of
+              NotifyEvent ev -> Just ev
+              _              -> Nothing
+            )
+            events
+          )
+        $ \ev -> do
+            liftIO $ print ev
+
+            confs <- decodeAndResolveConfig "resources/app.yml"
+            liftIO $ print confs
 
     let specifiedKeys = HM.mapWithKey
           (\k v -> if keys k then v + 1 else 0)

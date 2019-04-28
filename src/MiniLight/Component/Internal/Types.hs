@@ -9,14 +9,14 @@ data ComponentConfig = ComponentConfig {
   name :: T.Text,
   uid :: Maybe T.Text,
   properties :: Value
-} deriving (Eq, Generic)
+} deriving (Eq, Show, Generic)
 
 instance ToJSON ComponentConfig
 instance FromJSON ComponentConfig
 
 data AppConfig = AppConfig {
   app :: [ComponentConfig]
-} deriving Generic
+} deriving (Eq, Show, Generic)
 
 instance ToJSON AppConfig
 instance FromJSON AppConfig
