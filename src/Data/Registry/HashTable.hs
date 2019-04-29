@@ -5,6 +5,7 @@ module Data.Registry.HashTable where
 import Control.Monad.IO.Class
 import qualified Data.HashTable.IO as H
 import Data.Foldable (foldlM)
+import Data.Maybe (fromJust)
 import Data.Registry.Class
 import qualified Data.Text as T
 import qualified Data.Vector as V
@@ -16,6 +17,10 @@ instance IRegistry (HashTableImpl T.Text) where
   (!?) (HashTableImpl reg vec) k = liftIO $ do
     i <- H.lookup reg k
     maybe (return Nothing) (fmap Just . VM.read vec) i
+
+  update (HashTableImpl ht vec) k f = do
+    i <- fmap fromJust $ liftIO $ H.lookup ht k
+    liftIO (VM.read vec i) >>= f >>= liftIO . VM.write vec i
 
   asVec (HashTableImpl _ vec) = vec
 

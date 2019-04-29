@@ -20,8 +20,8 @@ class IRegistry reg where
   -- | /O(1)/ Safe indexing
   (!?) :: MonadIO m => reg v -> T.Text -> m (Maybe v)
 
---  -- | /O(1)/ Update, raise an exception if the key does not exists.
---  update :: MonadIO m => reg v -> T.Text -> (v -> m v) -> m ()
+  -- | /O(1)/ Update, raise an exception if the key does not exists.
+  update :: MonadIO m => reg v -> T.Text -> (v -> m v) -> m ()
 
 --  -- | /O(n)/ Delete, the complexity would be reduced in the future.
 --  delete :: MonadIO m => reg v -> T.Text -> m ()
