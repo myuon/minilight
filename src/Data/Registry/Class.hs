@@ -28,8 +28,13 @@ class IRegistry reg where
   -- | /O(1)/ Delete
   delete :: MonadIO m => reg v -> T.Text -> m ()
 
+  -- | /O(n)/ Get the keys. (Should preserve the order)
+  keys :: MonadIO m => reg v -> m [T.Text]
+  keys reg = fmap (map fst) $ toList reg
+
   -- | /O(n)/ Convert the registry to the lazy list.
   toList :: MonadIO m => reg v -> m [(T.Text, v)]
+  toList reg = keys reg >>= mapM (\k -> fmap ((,) k) $ reg ! k)
 
   -- | /O(n)/ Iterative loop over the items.
   iforM_ :: MonadIO m => reg v -> (T.Text -> v -> m ()) -> m ()
