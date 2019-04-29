@@ -21,10 +21,10 @@ import Control.Monad.Reader
 import Data.Foldable (foldlM)
 import Data.Hashable (Hashable(..))
 import qualified Data.HashMap.Strict as HM
+import qualified Data.Registry as R
 import Data.Maybe
 import Data.IORef
 import qualified Data.Text as T
-import qualified Data.Vector.Mutable as VM
 import Graphics.Text.TrueType
 import Lens.Micro
 import Lens.Micro.Mtl
@@ -65,19 +65,13 @@ defConfig = LoopConfig
   , additionalComponents = []
   }
 
-fromList :: MonadIO m => [a] -> m (VM.IOVector a)
-fromList xs = liftIO $ do
-  vec <- VM.new $ length xs
-  forM_ (zip [0 ..] xs) $ uncurry (VM.write vec)
-  return vec
-
 -- | LoopEnv value would be passed to user side in a mainloop.
 data LoopEnv env = LoopState {
   env :: env,
   keyStates :: HM.HashMap SDL.Scancode Int,
   events :: MVar [Event],
   signalQueue :: IORef [Event],
-  components :: VM.IOVector Component,
+  components :: R.Registry Component,
   appConfig :: IORef AppConfig
 }
 
@@ -126,32 +120,36 @@ runMainloop
   -> (s -> LightT loop m s)  -- ^ a function called in every loop
   -> LightT env m ()
 runMainloop conv conf initial loop = do
-  events                     <- liftIO $ newMVar []
-  signalQueue                <- liftIO $ newIORef []
+  events      <- liftIO $ newMVar []
+  signalQueue <- liftIO $ newIORef []
+  reg         <- R.newRegistry
 
-  (appConfig, componentList) <-
-    case (hotConfigReplacement conf, appConfigFile conf) of
-      (Just dir, Just confPath) -> do
-        liftIO $ void $ forkIO $ Notify.withManager $ \mgr -> do
-          _ <- Notify.watchDir mgr dir (const True) $ \ev -> do
-            modifyMVar_ events $ return . (NotifyEvent ev :)
+  appConfig   <- case (hotConfigReplacement conf, appConfigFile conf) of
+    (Just dir, Just confPath) -> do
+      liftIO $ void $ forkIO $ Notify.withManager $ \mgr -> do
+        _ <- Notify.watchDir mgr dir (const True) $ \ev -> do
+          modifyMVar_ events $ return . (NotifyEvent ev :)
 
-          forever $ threadDelay 1000000
+        forever $ threadDelay 1000000
 
-        liftMiniLight (loadAppConfig confPath (componentResolver conf))
-      _ -> return (AppConfig [], [])
+      (appConfig, cs) <- liftMiniLight
+        (loadAppConfig confPath (componentResolver conf))
+      forM_ cs $ \(k, v) -> R.insert reg k v
 
-  components <- fromList (additionalComponents conf ++ componentList)
-  config     <- liftIO $ newIORef appConfig
+      return appConfig
+    _ -> return $ AppConfig []
 
-  env        <- view id
+  forM_ (additionalComponents conf) $ \c -> newUID >>= \k -> R.insert reg k c
+  config <- liftIO $ newIORef appConfig
+
+  env    <- view id
   go
     ( LoopState
       { keyStates   = HM.empty
       , events      = events
       , signalQueue = signalQueue
       , env         = env
-      , components  = components
+      , components  = reg
       , appConfig   = config
       }
     )
@@ -162,20 +160,17 @@ runMainloop conv conf initial loop = do
     liftIO $ SDL.rendererDrawColor renderer SDL.$= 255
     liftIO $ SDL.clear renderer
 
-    forM_ [0 .. VM.length (components loopState) - 1] $ \i -> do
-      comp <- liftIO $ VM.read (components loopState) i
+    R.iforM_ (components loopState) $ \_ comp -> do
       draw comp
 
     -- state propagation
-    forM_ [0 .. VM.length (components loopState) - 1] $ \i -> do
-      comp <- liftIO $ VM.read (components loopState) i
-      liftIO $ VM.write (components loopState) i (propagate comp)
+    R.iforM_ (components loopState) $ \k comp -> do
+      R.insert (components loopState) k (propagate comp)
 
-    forM_ [0 .. VM.length (components loopState) - 1] $ \i -> do
-      comp  <- liftIO $ VM.read (components loopState) i
-      comp' <- envLightT (\env -> (getUID comp, conv $ loopState { env = env }))
+    R.iforM_ (components loopState) $ \key comp -> do
+      comp' <- envLightT (\env -> (key, conv $ loopState { env = env }))
         $ update comp
-      liftIO $ VM.write (components loopState) i comp'
+      R.insert (components loopState) key comp'
 
     s' <- envLightT (\env -> conv $ loopState { env = env }) $ loop s
 
@@ -200,13 +195,11 @@ runMainloop conv conf initial loop = do
       evref  <- view eventsL
       events <- liftIO $ modifyMVar evref (\a -> return ([], a))
 
-      forM_ [0 .. VM.length (components loopState) - 1] $ \i -> do
-        comp  <- liftIO $ VM.read (components loopState) i
-        comp' <- foldlM
-          (\comp ev -> envLightT ((,) (getUID comp)) $ onSignal ev comp)
-          comp
-          events
-        liftIO $ VM.write (components loopState) i comp'
+      R.iforM_ (components loopState) $ \key comp -> do
+        comp' <- foldlM (\comp ev -> envLightT ((,) key) $ onSignal ev comp)
+                        comp
+                        events
+        R.insert (components loopState) key comp'
 
       forM_
           ( catMaybes $ map

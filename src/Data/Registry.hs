@@ -25,6 +25,7 @@ instance IRegistry Registry where
   insert (Registry reg) k v = insert reg k v
   update (Registry reg) k v = update reg k v
   delete (Registry reg) k = delete reg k
+  toList (Registry reg) = toList reg
 
 -- | The current default implementation is using hashtables, defined in the module 'Data.Registry.HashTable'
 newRegistry :: MonadIO m => m (Registry v)

@@ -14,6 +14,7 @@ instance IRegistry (HashTableImpl T.Text) where
   insert (HashTableImpl reg) k v = liftIO $ H.insert reg k v
   update (HashTableImpl reg) k f = liftIO $ H.mutate reg k (maybe (Nothing, ()) (\v -> (Just $ f v, ())))
   delete (HashTableImpl reg) k = liftIO $ H.delete reg k
+  toList (HashTableImpl reg) = liftIO $ H.toList reg
 
 newHashTableRegistry :: MonadIO m => m (HashTableImpl T.Text v)
 newHashTableRegistry = liftIO $ fmap HashTableImpl $ H.new

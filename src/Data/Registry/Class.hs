@@ -1,5 +1,6 @@
 module Data.Registry.Class where
 
+import Control.Monad
 import Control.Monad.IO.Class
 import qualified Data.Text as T
 import Data.Maybe (isJust)
@@ -26,6 +27,15 @@ class IRegistry reg where
 
   -- | /O(1)/ Delete
   delete :: MonadIO m => reg v -> T.Text -> m ()
+
+  -- | /O(n)/ Convert the registry to the lazy list.
+  toList :: MonadIO m => reg v -> m [(T.Text, v)]
+
+  -- | /O(n)/ Iterative loop over the items.
+  iforM_ :: MonadIO m => reg v -> (T.Text -> v -> m ()) -> m ()
+  iforM_ reg f = do
+    xs <- toList reg
+    forM_ xs $ \(k,v) -> f k v
 
 infixl 9 !
 infixl 9 !?
