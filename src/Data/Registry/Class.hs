@@ -25,10 +25,10 @@ class IRegistry reg where
   -- | /O(1)/ Update
   update :: MonadIO m => reg v -> T.Text -> (v -> v) -> m ()
 
-  -- | /O(1)/ Delete
+  -- | /O(n)/ Delete, the complexity would be reduced in the future.
   delete :: MonadIO m => reg v -> T.Text -> m ()
 
-  -- | /O(n)/ Get the keys. (Should preserve the order)
+  -- | /O(n)/ Get the keys, should preserve the order (FIFO).
   keys :: MonadIO m => reg v -> m [T.Text]
   keys reg = fmap (map fst) $ toList reg
 
