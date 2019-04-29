@@ -9,10 +9,11 @@ module Data.Registry (
   module Data.Registry.Class,
 
   Registry(..),
-  newRegistry,
+  fromList,
 ) where
 
 import Control.Monad.IO.Class
+import qualified Data.Text as T
 import Data.Registry.Class
 import Data.Registry.HashTable
 
@@ -20,13 +21,13 @@ import Data.Registry.HashTable
 data Registry v = forall reg. IRegistry reg => Registry (reg v)
 
 instance IRegistry Registry where
-  has (Registry reg) t = has reg t
   (!?) (Registry reg) t = (!?) reg t
-  insert (Registry reg) k v = insert reg k v
-  update (Registry reg) k v = update reg k v
-  delete (Registry reg) k = delete reg k
-  toList (Registry reg) = toList reg
+  asVec (Registry reg) = asVec reg
+--  insert (Registry reg) k v = insert reg k v
+--  update (Registry reg) k v = update reg k v
+--  delete (Registry reg) k = delete reg k
+--  toList (Registry reg) = toList reg
 
--- | The current default implementation is using hashtables, defined in the module 'Data.Registry.HashTable'
-newRegistry :: MonadIO m => m (Registry v)
-newRegistry = fmap Registry newHashTableRegistry
+-- | /O(n)/ Create a registry from a list. The current implementation uses a hashtable, defined in the module 'Data.Registry.HashTable'.
+fromList :: MonadIO m => [(T.Text, v)] -> m (Registry v)
+fromList xs = fmap Registry $ fromListImpl xs

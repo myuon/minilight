@@ -120,26 +120,24 @@ runMainloop
   -> (s -> LightT loop m s)  -- ^ a function called in every loop
   -> LightT env m ()
 runMainloop conv conf initial loop = do
-  events      <- liftIO $ newMVar []
-  signalQueue <- liftIO $ newIORef []
-  reg         <- R.newRegistry
+  events                <- liftIO $ newMVar []
+  signalQueue           <- liftIO $ newIORef []
 
-  appConfig   <- case (hotConfigReplacement conf, appConfigFile conf) of
-    (Just dir, Just confPath) -> do
-      liftIO $ void $ forkIO $ Notify.withManager $ \mgr -> do
-        _ <- Notify.watchDir mgr dir (const True) $ \ev -> do
-          modifyMVar_ events $ return . (NotifyEvent ev :)
+  (appConfig, compList) <-
+    case (hotConfigReplacement conf, appConfigFile conf) of
+      (Just dir, Just confPath) -> do
+        liftIO $ void $ forkIO $ Notify.withManager $ \mgr -> do
+          _ <- Notify.watchDir mgr dir (const True) $ \ev -> do
+            modifyMVar_ events $ return . (NotifyEvent ev :)
 
-        forever $ threadDelay 1000000
+          forever $ threadDelay 1000000
 
-      (appConfig, cs) <- liftMiniLight
-        (loadAppConfig confPath (componentResolver conf))
-      forM_ cs $ \(k, v) -> R.insert reg k v
+        liftMiniLight (loadAppConfig confPath (componentResolver conf))
 
-      return appConfig
-    _ -> return $ AppConfig []
+        return appConfig
+      _ -> return $ AppConfig []
 
-  forM_ (additionalComponents conf) $ \c -> newUID >>= \k -> R.insert reg k c
+  reg    <- R.fromList (compList ++ additionalComponents conf)
   config <- liftIO $ newIORef appConfig
 
   env    <- view id
@@ -160,17 +158,13 @@ runMainloop conv conf initial loop = do
     liftIO $ SDL.rendererDrawColor renderer SDL.$= 255
     liftIO $ SDL.clear renderer
 
-    R.iforM_ (components loopState) $ \_ comp -> do
-      draw comp
+    R.forV_ (components loopState) $ \comp -> draw comp
 
     -- state propagation
-    R.iforM_ (components loopState) $ \k comp -> do
-      R.insert (components loopState) k (propagate comp)
+    R.modifyV_ (components loopState) propagate
 
-    R.iforM_ (components loopState) $ \key comp -> do
-      comp' <- envLightT (\env -> (key, conv $ loopState { env = env }))
-        $ update comp
-      R.insert (components loopState) key comp'
+    R.modifyV_ (components loopState) $ \comp ->
+      envLightT (\env -> (_, conv $ loopState { env = env })) $ update comp
 
     s' <- envLightT (\env -> conv $ loopState { env = env }) $ loop s
 
@@ -195,11 +189,8 @@ runMainloop conv conf initial loop = do
       evref  <- view eventsL
       events <- liftIO $ modifyMVar evref (\a -> return ([], a))
 
-      R.iforM_ (components loopState) $ \key comp -> do
-        comp' <- foldlM (\comp ev -> envLightT ((,) key) $ onSignal ev comp)
-                        comp
-                        events
-        R.insert (components loopState) key comp'
+      R.modifyV_ (components loopState) $ \comp -> do
+        foldlM (\comp ev -> envLightT ((,) _) $ onSignal ev comp) comp events
 
       forM_
           ( catMaybes $ map
