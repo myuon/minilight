@@ -5,36 +5,18 @@ This module is intended to be imported @qualified@, like:
 import qualified Data.Registry as R
 @
 -}
-module Data.Registry where
+module Data.Registry (
+  module Data.Registry.Class,
+
+  Registry(..),
+  newRegistry,
+) where
 
 import Control.Monad.IO.Class
-import qualified Data.Text as T
+import Data.Registry.Class
+import Data.Registry.HashTable
 
--- | @IRegistry@ typeclass presents a registry interface.
--- The complexity /O(1)/ in the operations are "amortized" complexity.
-class IRegistry reg where
-  -- | /O(1)/ Checking if the specified key exists
-  has :: MonadIO m => reg v -> T.Text -> m Bool
-
-  -- | /O(1)/ Indexing
-  (!) :: MonadIO m => reg v -> T.Text -> m v
-  reg ! k = fmap (\(Just a) -> a) $ reg !? k
-
-  -- | /O(1)/ Safe indexing
-  (!?) :: MonadIO m => reg v -> T.Text -> m (Maybe v)
-
-  -- | /O(1)/ Insert
-  insert :: MonadIO m => reg v -> T.Text -> v -> m ()
-
-  -- | /O(1)/ Update
-  update :: MonadIO m => reg v -> T.Text -> (v -> v) -> m ()
-
-  -- | /O(1)/ Delete
-  delete :: MonadIO m => reg v -> T.Text -> m ()
-
-infixl 9 !
-infixl 9 !?
-
+-- | The @Registry@ type can represents any 'IRegistry' instance.
 data Registry v = forall reg. IRegistry reg => Registry (reg v)
 
 instance IRegistry Registry where
@@ -43,3 +25,7 @@ instance IRegistry Registry where
   insert (Registry reg) k v = insert reg k v
   update (Registry reg) k v = update reg k v
   delete (Registry reg) k = delete reg k
+
+-- | The current default implementation is using hashtables, defined in the module 'Data.Registry.HashTable'
+newRegistry :: MonadIO m => m (Registry v)
+newRegistry = fmap Registry newHashTableRegistry
