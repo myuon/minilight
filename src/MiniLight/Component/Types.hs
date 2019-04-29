@@ -1,6 +1,5 @@
 {-# LANGUAGE ExistentialQuantification #-}
 module MiniLight.Component.Types (
-  Resolver,
   HasComponentEnv(..),
   emit,
 
@@ -9,16 +8,12 @@ module MiniLight.Component.Types (
   newComponent,
   getComponentSize,
   getUID,
-  newUID,
   propagate,
 ) where
 
 import Control.Monad.Catch
 import Control.Monad.IO.Class
-import Data.Aeson
 import Data.IORef
-import qualified Data.UUID
-import qualified Data.UUID.V4
 import qualified Data.Text as T
 import Lens.Micro
 import Lens.Micro.Mtl
@@ -26,13 +21,6 @@ import MiniLight.Light
 import MiniLight.Event
 import MiniLight.Figure
 import qualified SDL
-
--- | The type for component resolver
-type Resolver
-  = T.Text  -- ^ Component Type
-  -> T.Text  -- ^ UID
-  -> Value  -- ^ Component Property
-  -> MiniLight Component
 
 class HasComponentEnv env where
   -- | Lens to the unique id, which is provided for each component.
@@ -112,10 +100,6 @@ getComponentSize comp = do
 -- | Get its unique id.
 getUID :: Component -> T.Text
 getUID (Component uid _ _ _) = uid
-
--- | Generate an unique id.
-newUID :: MonadIO m => m T.Text
-newUID = liftIO $ Data.UUID.toText <$> Data.UUID.V4.nextRandom
 
 -- | Clear the previous model cache and reflect the current model.
 propagate :: Component -> Component
