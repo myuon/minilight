@@ -206,8 +206,8 @@ runMainloop conv conf initial loop = do
             confs0 <- liftIO $ readIORef (appConfig loopState)
             resolveConfig "resources/app.yml" >>= \case
               Left  err   -> liftIO $ print err
-              Right confs -> forM_ (diff confs0 confs) $ \(typ, compConf) ->
-                case typ of
+              Right confs -> do
+                forM_ (diff confs0 confs) $ \(typ, compConf) -> case typ of
                   Modify -> R.update
                     (components loopState)
                     (fromJust $ uid compConf)
@@ -215,6 +215,8 @@ runMainloop conv conf initial loop = do
                       $ createComponentBy (componentResolver conf) compConf
                     )
                   _ -> return ()
+
+                liftIO $ writeIORef (appConfig loopState) confs
 
     let specifiedKeys = HM.mapWithKey
           (\k v -> if keys k then v + 1 else 0)
