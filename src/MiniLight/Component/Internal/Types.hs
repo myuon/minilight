@@ -28,6 +28,7 @@ instance FromJSON AppConfig
 -- | The type for component resolver
 type Resolver
   = T.Text  -- ^ Component Type
+  -> T.Text  -- ^ UID
   -> Value  -- ^ Component Property
   -> MiniLight Component
 
@@ -37,4 +38,5 @@ newUID = liftIO $ Data.UUID.toText <$> Data.UUID.V4.nextRandom
 
 -- | Create a component with given resolver.
 createComponentBy :: Resolver -> ComponentConfig -> MiniLight Component
-createComponentBy resolver config = resolver (name config) (properties config)
+createComponentBy resolver config = maybe newUID return (uid config)
+  >>= \u -> resolver (name config) u (properties config)

@@ -21,10 +21,10 @@ import Control.Monad.Reader
 import Data.Foldable (foldlM)
 import Data.Hashable (Hashable(..))
 import qualified Data.HashMap.Strict as HM
-import qualified Data.Registry as R
 import Data.Maybe
 import Data.IORef
 import qualified Data.Text as T
+import qualified Data.Vector.Mutable as VM
 import Graphics.Text.TrueType
 import Lens.Micro
 import Lens.Micro.Mtl
@@ -65,13 +65,19 @@ defConfig = LoopConfig
   , additionalComponents = []
   }
 
+fromList :: MonadIO m => [a] -> m (VM.IOVector a)
+fromList xs = liftIO $ do
+  vec <- VM.new $ length xs
+  forM_ (zip [0 ..] xs) $ uncurry (VM.write vec)
+  return vec
+
 -- | LoopEnv value would be passed to user side in a mainloop.
 data LoopEnv env = LoopState {
   env :: env,
   keyStates :: HM.HashMap SDL.Scancode Int,
   events :: MVar [Event],
   signalQueue :: IORef [Event],
-  components :: R.Registry Component,
+  components :: VM.IOVector Component,
   appConfig :: IORef AppConfig
 }
 
@@ -147,7 +153,7 @@ runMainloop conv conf initial loop = do
       , events      = events
       , signalQueue = signalQueue
       , env         = env
-      , components  = reg
+      , components  = components
       , appConfig   = config
       }
     )

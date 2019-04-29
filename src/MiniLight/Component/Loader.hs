@@ -12,7 +12,6 @@ module MiniLight.Component.Loader (
 import Control.Monad.IO.Class
 import Data.Aeson
 import Data.Maybe (fromJust)
-import qualified Data.Text as T
 import Data.Yaml (decodeFileEither)
 import MiniLight.Light
 import MiniLight.Component.Types
@@ -50,14 +49,13 @@ loadAppConfig
   :: (HasLightEnv env, MonadIO m)
   => FilePath  -- ^ Filepath to the yaml file.
   -> Resolver  -- ^ Specify any resolver.
-  -> LightT env m (AppConfig, [(T.Text, Component)])
+  -> LightT env m (AppConfig, [Component])
 loadAppConfig path mapper = do
   resolveAndAssignUIDConfig path >>= \case
     Left  err  -> error err
     Right conf -> (,) <$> pure conf <*> mapM
-      ( \conf -> liftMiniLight $ (,) <$> (pure $ fromJust $ uid conf) <*> mapper
-        (name conf)
-        (properties conf)
+      ( \conf -> liftMiniLight
+        $ mapper (name conf) (fromJust $ uid conf) (properties conf)
       )
       (app conf)
 
@@ -66,7 +64,7 @@ loadAppConfig_
   :: (HasLightEnv env, MonadIO m)
   => FilePath  -- ^ Filepath to the yaml file.
   -> Resolver  -- ^ Specify any resolver.
-  -> LightT env m [(T.Text, Component)]
+  -> LightT env m [Component]
 loadAppConfig_ path mapper = fmap snd $ loadAppConfig path mapper
 
 -- | Assign unique IDs to each component configuration.
