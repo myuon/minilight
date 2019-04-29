@@ -32,6 +32,7 @@ source-repository head
 
 library
   exposed-modules:
+    Data.Registry
     MiniLight
     MiniLight.Figure
     MiniLight.Light
