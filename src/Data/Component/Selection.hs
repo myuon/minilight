@@ -47,6 +47,9 @@ instance ComponentUnit Selection where
         hoverL .= Just ((pos ^. _y) `div` 30)
       _ -> return ()
 
+  -- OMG
+  beforeClearCache _ figs = mapM_ freeFigure $ tail figs
+
 data Config = Config {
   basic :: Basic.Config,
   labels :: V.Vector T.Text,
