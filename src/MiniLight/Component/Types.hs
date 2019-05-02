@@ -32,7 +32,7 @@ emit
   -> LightT env m ()
 emit et = do
   uid <- view uidL
-  ref <- view signalQueueL
+  ref <- view _signalQueue
   liftIO $ modifyIORef' ref $ (signal uid et :)
 
 -- | CompoonentUnit typeclass provides a way to define a new component.

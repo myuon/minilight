@@ -12,6 +12,7 @@ module MiniLight.Light (
   mapLightT,
 
   HasLoopEnv (..),
+  LoopEnv (..),
 
   FontDescriptor(..),
   FontStyle(..),
@@ -53,6 +54,14 @@ data LightEnv = LightEnv
 
 makeClassy_ ''LightEnv
 
+data LoopEnv = LoopEnv
+  { keyStates :: HM.HashMap SDL.Scancode Int  -- ^ Current state of keys, represents how many frames the key down has been down
+  , events :: MVar [Event]  -- ^ Event queue
+  , signalQueue :: IORef [Event]  -- ^ Signals emitted from components are stored in the queue and poll in the next frame.
+  }
+
+makeClassy_ ''LoopEnv
+
 
 newtype LightT env m a = LightT { runLightT' :: ReaderT env m a }
   deriving (Functor, Applicative, Monad, MonadFail, MonadIO, MonadThrow, MonadMask, MonadCatch)
@@ -80,16 +89,6 @@ envLightT f m = LightT $ ReaderT $ runReaderT (runLightT' m) . f
 mapLightT :: (m a -> n a) -> LightT env m a -> LightT env n a
 mapLightT f m = LightT $ ReaderT $ f . runReaderT (runLightT' m)
 {-# INLINE mapLightT #-}
-
-class HasLoopEnv env where
-  -- | Contains the number of frames that a specific keys are continuously pressing.
-  keyStatesL :: Lens' env (HM.HashMap SDL.Scancode Int)
-
-  -- | Occurred events since the last frame.
-  eventsL :: Lens' env (MVar [Event])
-
-  -- | A queue storing the events occurred in this frame.
-  signalQueueL :: Lens' env (IORef [Event])
 
 loadFontCache :: MonadIO m => m FontMap
 loadFontCache = do

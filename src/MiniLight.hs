@@ -1,5 +1,6 @@
 {-| MiniLight module exports all basic concepts and oprations except for concrete components.
 -}
+{-# LANGUAGE FunctionalDependencies #-}
 module MiniLight (
   module MiniLight.Light,
   module MiniLight.Event,
@@ -7,9 +8,9 @@ module MiniLight (
   module MiniLight.Component,
 
   runLightT,
+  LoopState (..),
   LoopConfig (..),
   defConfig,
-  LoopEnv (..),
   MiniLoop,
   runMainloop,
 ) where
@@ -47,6 +48,14 @@ runLightT prog = withSDL $ withWindow $ \window -> do
   logger   <- liftIO $ Caster.stdoutLogger Caster.LogDebug
   runReaderT (runLightT' prog)
     $ LightEnv {renderer = renderer, fontCache = fc, logger = logger}
+ where
+  withSDL =
+    bracket (SDL.initializeAll >> SDL.Font.initialize)
+            (\_ -> SDL.Font.quit >> SDL.quit)
+      . const
+
+  withWindow =
+    bracket (SDL.createWindow "window" SDL.defaultWindow) SDL.destroyWindow
 
 -- | Use 'defConfig' for a default setting.
 data LoopConfig = LoopConfig {
@@ -67,41 +76,34 @@ defConfig = LoopConfig
   , additionalComponents = []
   }
 
--- | LoopEnv value would be passed to user side in a mainloop.
-data LoopEnv env = LoopState {
+-- | The state in the mainloop.
+data LoopState env = LoopState {
   env :: env,
-  keyStates :: HM.HashMap SDL.Scancode Int,
-  events :: MVar [Event],
-  signalQueue :: IORef [Event],
+  loop :: LoopEnv,
   components :: R.Registry Component,
   appConfig :: IORef AppConfig
 }
 
--- | Lens to the env inside 'LoopState'
-envL :: Lens' (LoopEnv env) env
-envL = lens env (\e r -> e { env = r })
+makeLensesWith classyRules_ ''LoopState
 
-instance HasLightEnv env => HasLightEnv (LoopEnv env) where
-  lightEnv = envL . lightEnv
 
-instance HasLoopEnv (LoopEnv env) where
-  keyStatesL = lens keyStates (\env r -> env { keyStates = r })
-  eventsL = lens events (\env r -> env { events = r })
-  signalQueueL = lens signalQueue (\env r -> env { signalQueue = r })
+instance HasLightEnv env => HasLightEnv (LoopState env) where
+  lightEnv = _env . lightEnv
+
+instance HasLoopEnv (LoopState env) where
+  loopEnv = _loop . loopEnv
 
 instance HasLightEnv env => HasLightEnv (T.Text, env) where
   lightEnv = _2 . lightEnv
 
 instance HasLoopEnv env => HasLoopEnv (T.Text, env) where
-  keyStatesL = _2 . keyStatesL
-  eventsL = _2 . eventsL
-  signalQueueL = _2 . signalQueueL
+  loopEnv = _2 . loopEnv
 
 instance HasComponentEnv (T.Text, env) where
   uidL = _1
 
 -- | Type synonym to the minimal type of the mainloop
-type MiniLoop = LightT (LoopEnv LightEnv) IO
+type MiniLoop = LightT (LoopState LightEnv) IO
 
 -- | Run a mainloop.
 -- In a mainloop, components and events are managed.
@@ -114,7 +116,7 @@ runMainloop
      , MonadIO m
      , MonadMask m
      )
-  => (LoopEnv env -> loop)  -- ^ LoopState conversion function (you can pass @id@, fixing @loop@ as @'LoopState' 'LightEnv'@)
+  => (LoopState env -> loop)  -- ^ LoopState conversion function (you can pass @id@, fixing @loop@ as @'LoopState' 'LightEnv'@)
   -> LoopConfig  -- ^ loop config
   -> s  -- ^ initial state
   -> (s -> LightT loop m s)  -- ^ a function called in every loop
@@ -142,12 +144,14 @@ runMainloop conv conf initial loop = do
   env    <- view id
   go
     ( LoopState
-      { keyStates   = HM.empty
-      , events      = events
-      , signalQueue = signalQueue
-      , env         = env
-      , components  = reg
-      , appConfig   = config
+      { env        = env
+      , loop       = LoopEnv
+        { keyStates   = HM.empty
+        , events      = events
+        , signalQueue = signalQueue
+        }
+      , components = reg
+      , appConfig  = config
       }
     )
     initial
@@ -175,8 +179,8 @@ runMainloop conv conf initial loop = do
     keys   <- SDL.getKeyboardState
 
     envLightT (\env -> conv $ loopState { env = env }) $ do
-      evref   <- view eventsL
-      sigref  <- view signalQueueL
+      evref   <- view _events
+      sigref  <- view _signalQueue
       signals <- liftIO $ readIORef sigref
       liftIO
         $ modifyMVar_ evref
@@ -186,7 +190,7 @@ runMainloop conv conf initial loop = do
       liftIO $ writeIORef sigref []
 
     envLightT (\env -> conv $ loopState { env = env }) $ do
-      evref  <- view eventsL
+      evref  <- view _events
       events <- liftIO $ modifyMVar evref (\a -> return ([], a))
 
       R.modifyV_ (components loopState) $ \comp -> do
@@ -230,16 +234,17 @@ runMainloop conv conf initial loop = do
 
     let specifiedKeys = HM.mapWithKey
           (\k v -> if keys k then v + 1 else 0)
-          ( maybe
+          (  maybe
               id
               ( \specified m -> HM.fromList $ map
                 (\s -> (s, if HM.member s m then m HM.! s else 0))
                 specified
               )
               (watchKeys conf)
-          $ keyStates loopState
+          $  loopState
+          ^. _keyStates
           )
-    let loopState' = loopState { keyStates = specifiedKeys }
+    let loopState' = loopState & _loop . _keyStates .~ specifiedKeys
     let quit = any
           ( \event -> case SDL.eventPayload event of
             SDL.WindowClosedEvent _ -> True
@@ -249,15 +254,3 @@ runMainloop conv conf initial loop = do
           events
 
     unless quit $ go loopState' s'
-
---
-
-withSDL :: (MonadIO m, MonadMask m) => m a -> m a
-withSDL =
-  bracket (SDL.initializeAll >> SDL.Font.initialize)
-          (\_ -> SDL.Font.quit >> SDL.quit)
-    . const
-
-withWindow :: (MonadIO m, MonadMask m) => (SDL.Window -> m a) -> m a
-withWindow =
-  bracket (SDL.createWindow "window" SDL.defaultWindow) SDL.destroyWindow
