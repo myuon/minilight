@@ -1,9 +1,8 @@
 module Data.Component.Layer where
 
+import Control.Lens
 import Control.Monad
 import Data.Aeson
-import Lens.Micro
-import Lens.Micro.Mtl
 import Linear
 import MiniLight
 import qualified SDL

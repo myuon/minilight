@@ -5,12 +5,11 @@
 -- | This module provides many convenient operations for textures.
 module MiniLight.Figure where
 
+import Control.Lens
 import Control.Monad.Catch
 import Control.Monad.IO.Class
 import qualified Data.Text as T
 import Data.Word (Word8)
-import Lens.Micro
-import Lens.Micro.Mtl
 import Linear (_x, _y)
 import MiniLight.Light
 import qualified SDL

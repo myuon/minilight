@@ -1,9 +1,8 @@
 module Data.Component.MessageLayer where
 
+import Control.Lens
 import Control.Monad.State
 import Data.Aeson
-import Lens.Micro
-import Lens.Micro.Mtl
 import Linear
 import MiniLight
 import qualified Data.Component.Basic as Basic

@@ -1,10 +1,10 @@
 module Data.Component.MessageEngine where
 
+import Control.Lens
 import Control.Monad.State
 import Data.Aeson
 import qualified Data.Text as T
 import Data.Word (Word8)
-import Lens.Micro.Mtl
 import MiniLight
 import qualified SDL
 import qualified SDL.Font

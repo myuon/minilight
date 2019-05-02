@@ -1,12 +1,11 @@
 module Data.Component.Selection where
 
+import Control.Lens
 import Control.Monad.State
 import Data.Aeson hiding ((.=))
 import qualified Data.Config.Font as Font
 import qualified Data.Text as T
 import qualified Data.Vector as V
-import Lens.Micro
-import Lens.Micro.Mtl
 import Linear
 import MiniLight
 import qualified SDL.Font

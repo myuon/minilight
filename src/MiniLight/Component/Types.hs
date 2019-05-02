@@ -11,12 +11,11 @@ module MiniLight.Component.Types (
   propagate,
 ) where
 
+import Control.Lens
 import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Data.IORef
 import qualified Data.Text as T
-import Lens.Micro
-import Lens.Micro.Mtl
 import MiniLight.Light
 import MiniLight.Event
 import MiniLight.Figure

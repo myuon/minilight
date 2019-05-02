@@ -16,6 +16,7 @@ module MiniLight (
 
 import Control.Concurrent (threadDelay, forkIO)
 import Control.Concurrent.MVar
+import Control.Lens
 import qualified Control.Monad.Caster as Caster
 import Control.Monad.Catch
 import Control.Monad.Reader
@@ -27,8 +28,6 @@ import Data.IORef
 import qualified Data.Registry as R
 import qualified Data.Text as T
 import Graphics.Text.TrueType
-import Lens.Micro
-import Lens.Micro.Mtl
 import MiniLight.Component
 import MiniLight.Event
 import MiniLight.Figure

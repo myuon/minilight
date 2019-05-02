@@ -1,9 +1,9 @@
 module Data.Component.AnimationLayer where
 
+import Control.Lens
 import Control.Monad.State
 import Data.Aeson
 import Linear
-import Lens.Micro
 import MiniLight
 import qualified Data.Component.Layer as Layer
 import qualified SDL

@@ -24,6 +24,7 @@ module MiniLight.Light (
 ) where
 
 import Control.Concurrent.MVar
+import Control.Lens
 import Control.Monad.IO.Class
 import qualified Control.Monad.Caster as Caster
 import Control.Monad.Catch
@@ -33,8 +34,6 @@ import Data.Hashable (Hashable(..))
 import qualified Data.HashMap.Strict as HM
 import Data.IORef
 import Graphics.Text.TrueType
-import Lens.Micro
-import Lens.Micro.Mtl
 import MiniLight.Event
 import qualified SDL
 import qualified SDL.Font
