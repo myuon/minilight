@@ -10,6 +10,7 @@ module Data.Registry (
 
   Registry(..),
   fromList,
+  new,
 ) where
 
 import Control.Monad.IO.Class
@@ -29,3 +30,7 @@ instance IRegistry Registry where
 -- | /O(n)/ Create a registry from a list. The current implementation uses a hashtable, defined in the module 'Data.Registry.HashTable'.
 fromList :: MonadIO m => [(T.Text, v)] -> m (Registry v)
 fromList xs = fmap Registry $ fromListImpl xs
+
+-- | Create a new empty registry.
+new :: MonadIO m => m (Registry v)
+new = fromList []

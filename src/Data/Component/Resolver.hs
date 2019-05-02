@@ -1,12 +1,11 @@
 {-| This module provides the default resolver for pre-defined components.
 -}
 module Data.Component.Resolver (
-  ResolverError (..),
   resolver,
   foldResult,
 ) where
 
-import Control.Monad.Catch
+import Control.Monad
 import Data.Aeson
 import qualified Data.Text as T
 import MiniLight
@@ -17,31 +16,29 @@ import qualified Data.Component.MessageEngine as MessageEngine
 import qualified Data.Component.MessageLayer as MessageLayer
 import qualified Data.Component.Selection as Selection
 
-data ResolverError = ComponentCreationFailed T.Text
-  deriving (Eq, Show)
-
-instance Exception ResolverError
-
 foldResult :: (String -> b) -> (a -> b) -> Result a -> b
 foldResult f g r = case r of
   Error   err -> f err
   Success a   -> g a
 
+resultM
+  :: Result a
+  -> (a -> MiniLight Component)
+  -> MiniLight (Either String Component)
+resultM r m = foldResult (return . Left) (fmap Right . m) r
+
 -- | Pre-defined resolver supports all components in this library.
 resolver :: Resolver
 resolver name uid props = case name of
   "animation-layer" ->
-    newComponent uid =<< AnimationLayer.new =<< asSuccess props
-  "button" -> newComponent uid =<< Button.new =<< asSuccess props
-  "layer"  -> newComponent uid =<< Layer.new =<< asSuccess props
+    resultM (fromJSON props) $ newComponent uid <=< AnimationLayer.new
+  "button" -> resultM (fromJSON props) $ newComponent uid <=< Button.new
+  "layer"  -> resultM (fromJSON props) $ newComponent uid <=< Layer.new
   "message-engine" ->
-    newComponent uid =<< MessageEngine.new =<< asSuccess props
-  "message-layer" -> newComponent uid =<< MessageLayer.new =<< asSuccess props
-  "tiled-layer"   -> newComponent uid =<< Layer.newNineTile =<< asSuccess props
-  "selection"     -> newComponent uid =<< Selection.new =<< asSuccess props
-  _ ->
-    throwM $ ComponentCreationFailed $ "Component not defined: `" <> name <> "`"
- where
-  asSuccess :: FromJSON a => Value -> MiniLight a
-  asSuccess =
-    foldResult (throwM . ComponentCreationFailed . T.pack) return . fromJSON
+    resultM (fromJSON props) $ newComponent uid <=< MessageEngine.new
+  "message-layer" ->
+    resultM (fromJSON props) $ newComponent uid <=< MessageLayer.new
+  "tiled-layer" ->
+    resultM (fromJSON props) $ newComponent uid <=< Layer.newNineTile
+  "selection" -> resultM (fromJSON props) $ newComponent uid <=< Selection.new
+  _           -> return $ Left $ "Unsupported component: " ++ T.unpack name

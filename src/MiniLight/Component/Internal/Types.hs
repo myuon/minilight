@@ -30,13 +30,14 @@ type Resolver
   = T.Text  -- ^ Component Type
   -> T.Text  -- ^ UID
   -> Value  -- ^ Component Property
-  -> MiniLight Component
+  -> MiniLight (Either String Component)
 
 -- | Generate an unique id.
 newUID :: MonadIO m => m T.Text
 newUID = liftIO $ Data.UUID.toText <$> Data.UUID.V4.nextRandom
 
 -- | Create a component with given resolver.
-createComponentBy :: Resolver -> ComponentConfig -> MiniLight Component
+createComponentBy
+  :: Resolver -> ComponentConfig -> MiniLight (Either String Component)
 createComponentBy resolver config = maybe newUID return (uid config)
   >>= \u -> resolver (name config) u (properties config)

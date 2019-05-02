@@ -8,7 +8,6 @@ module MiniLight.Component.Loader (
   resolveConfig,
   resolveAndAssignUIDConfig,
   loadAppConfig,
-  loadAppConfig_,
   assignUID,
 ) where
 
@@ -30,7 +29,7 @@ import MiniLight.Component.Internal.Resolver (resolve)
 
 -- | The environment for config loader
 data LoaderEnv = LoaderEnv {
-  components :: R.Registry Component,
+  registry :: R.Registry Component,
   appConfig :: IORef AppConfig
 }
 
@@ -59,35 +58,33 @@ resolveAndAssignUIDConfig
 resolveAndAssignUIDConfig path =
   resolveConfig path >>= sequence . fmap assignUID
 
--- | Load an config file and return it with the constructed components.
+-- | Load an config file and set in the environment. Calling this function at once, this overrides all values in the environment.
 -- This will generate an error log and skip the component if the configuration is invalid.
 -- This function also assign unique IDs for each component, using 'assignUID'.
 loadAppConfig
-  :: (HasLightEnv env, MonadIO m)
+  :: (HasLightEnv env, HasLoaderEnv env, MonadIO m, MonadCatch m)
   => FilePath  -- ^ Filepath to the yaml file.
   -> Resolver  -- ^ Specify any resolver.
-  -> LightT env m (AppConfig, [Component])
+  -> LightT env m ()
 loadAppConfig path mapper = do
-  resolveAndAssignUIDConfig path >>= \case
-    Left  err  -> error err
-    Right conf -> liftM2 (,) (pure conf) $ fmap catMaybes $ mapM
-      ( \conf -> liftMiniLight $ do
-        result <- try
-          $ mapper (name conf) (fromJust $ uid conf) (properties conf)
-        case result of
-          Left msg ->
-            Caster.err (show (msg :: SomeException)) >> return Nothing
-          Right c -> return $ Just c
-      )
-      (app conf)
+  conf <- resolveAndAssignUIDConfig path
 
--- | A variant of 'loadAppConfig', if you don't need @AppConfig@.
-loadAppConfig_
-  :: (HasLightEnv env, MonadIO m)
-  => FilePath  -- ^ Filepath to the yaml file.
-  -> Resolver  -- ^ Specify any resolver.
-  -> LightT env m [Component]
-loadAppConfig_ path mapper = fmap snd $ loadAppConfig path mapper
+  (\m -> either Caster.err m conf) $ \conf -> do
+    confs <- fmap catMaybes $ forM (app conf) $ \conf -> do
+      result <- liftMiniLight
+        $ mapper (name conf) (fromJust $ uid conf) (properties conf)
+
+      flip (either (\err -> Caster.err err >> return Nothing)) result
+        $ (fmap Just .)
+        $ \component -> do
+            reg <- view _registry
+            R.register reg (getUID component) component
+            Caster.info $ "Component loaded: " <> show conf
+
+            return conf
+
+    ref <- view _appConfig
+    liftIO $ writeIORef ref $ AppConfig confs
 
 -- | Assign unique IDs to each component configuration.
 assignUID :: MonadIO m => AppConfig -> m AppConfig

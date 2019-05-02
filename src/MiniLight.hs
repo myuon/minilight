@@ -137,41 +137,47 @@ runMainloop
   -> (s -> LightT env' m s)  -- ^ A function called in every loop
   -> LightT env m ()
 runMainloop conv conf initial userloop = do
-  events                <- liftIO $ newMVar []
-  signalQueue           <- liftIO $ newIORef []
+  events      <- liftIO $ newMVar []
+  signalQueue <- liftIO $ newIORef []
+  reg         <- R.new
+  conf        <- liftIO $ newIORef $ AppConfig []
 
-  (appConfig, compList) <-
+  run
+    (LoopEnv {keyStates = HM.empty, events = events, signalQueue = signalQueue})
+    (LoaderEnv {registry = reg, appConfig = conf})
+    initial
+ where
+  run loop loader s = do
+    setup loop loader
+    go loop loader s
+
+  setup loop loader = envLightT (\env -> conv env loop loader) $ do
     case (hotConfigReplacement conf, appConfigFile conf) of
       (Just dir, Just confPath) -> do
-        liftIO $ void $ forkIO $ Notify.withManager $ \mgr -> do
+        liftIO $ forkIO $ Notify.withManager $ \mgr -> do
           _ <- Notify.watchDir mgr dir (const True) $ \ev -> do
-            modifyMVar_ events $ return . (NotifyEvent ev :)
+            modifyMVar_ (loop ^. _events) $ return . (NotifyEvent ev :)
 
           forever $ threadDelay 1000000
 
-        liftMiniLight (loadAppConfig confPath (componentResolver conf))
-      _ -> return $ (AppConfig [], [])
+        loadAppConfig confPath (componentResolver conf)
+      _ -> return ()
 
-  reg <- R.fromList
-    (map (\c -> (getUID c, c)) $ compList ++ additionalComponents conf)
-  config <- liftIO $ newIORef appConfig
+    forM_ (additionalComponents conf) $ \component -> do
+      reg <- view _registry
+      R.register reg (getUID component) component
 
-  go
-    (LoopEnv {keyStates = HM.empty, events = events, signalQueue = signalQueue})
-    (LoaderEnv {components = reg, appConfig = config})
-    initial
- where
   go loop loader s = do
     renderer <- view _renderer
     liftIO $ SDL.rendererDrawColor renderer SDL.$= 255
     liftIO $ SDL.clear renderer
 
-    R.forV_ (loader ^. _components) $ \comp -> draw comp
+    R.forV_ (loader ^. _registry) $ \comp -> draw comp
 
     -- state propagation
-    R.modifyV_ (loader ^. _components) $ return . propagate
+    R.modifyV_ (loader ^. _registry) $ return . propagate
 
-    R.modifyV_ (loader ^. _components) $ \comp ->
+    R.modifyV_ (loader ^. _registry) $ \comp ->
       envLightT (\env -> (getUID comp, conv env loop loader)) $ update comp
 
     s' <- envLightT (\env -> conv env loop loader) $ userloop s
@@ -197,7 +203,7 @@ runMainloop conv conf initial userloop = do
       evref  <- view _events
       events <- liftIO $ modifyMVar evref (\a -> return ([], a))
 
-      R.modifyV_ (loader ^. _components) $ \comp -> do
+      R.modifyV_ (loader ^. _registry) $ \comp -> do
         foldlM (\comp ev -> envLightT ((,) (getUID comp)) $ onSignal ev comp)
                comp
                events
@@ -222,11 +228,13 @@ runMainloop conv conf initial userloop = do
                   case typ of
                     Modify -> do
                       R.update
-                        (loader ^. _components)
+                        (loader ^. _registry)
                         (fromJust $ uid compConf)
-                        ( \_ -> liftMiniLight $ createComponentBy
-                          (componentResolver conf)
-                          compConf
+                        ( \_ ->
+                          fmap (\(Right a) -> a)
+                            $ liftMiniLight
+                            $ createComponentBy (componentResolver conf)
+                                                compConf
                         )
                     _ -> return ()
 
