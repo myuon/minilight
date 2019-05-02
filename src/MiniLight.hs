@@ -82,9 +82,7 @@ envL :: Lens' (LoopEnv env) env
 envL = lens env (\e r -> e { env = r })
 
 instance HasLightEnv env => HasLightEnv (LoopEnv env) where
-  rendererL = envL . rendererL
-  fontCacheL = envL . fontCacheL
-  loggerL = envL . loggerL
+  lightEnv = envL . lightEnv
 
 instance HasLoopEnv (LoopEnv env) where
   keyStatesL = lens keyStates (\env r -> env { keyStates = r })
@@ -92,9 +90,7 @@ instance HasLoopEnv (LoopEnv env) where
   signalQueueL = lens signalQueue (\env r -> env { signalQueue = r })
 
 instance HasLightEnv env => HasLightEnv (T.Text, env) where
-  rendererL = _2 . rendererL
-  fontCacheL = _2 . fontCacheL
-  loggerL = _2 . loggerL
+  lightEnv = _2 . lightEnv
 
 instance HasLoopEnv env => HasLoopEnv (T.Text, env) where
   keyStatesL = _2 . keyStatesL
@@ -157,7 +153,7 @@ runMainloop conv conf initial loop = do
     initial
  where
   go loopState s = do
-    renderer <- view rendererL
+    renderer <- view _renderer
     liftIO $ SDL.rendererDrawColor renderer SDL.$= 255
     liftIO $ SDL.clear renderer
 

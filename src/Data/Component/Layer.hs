@@ -43,7 +43,7 @@ newNineTile conf = do
   let texSize = fmap toEnum $ getFigureSize pic
 
   tinfo    <- SDL.queryTexture tex
-  renderer <- view rendererL
+  renderer <- view _renderer
 
   target   <- SDL.createTexture renderer
                                 (SDL.texturePixelFormat tinfo)

@@ -96,6 +96,7 @@ library
     MultiParamTypeClasses
     RankNTypes
     Strict
+    TemplateHaskell
   ghc-options: -Wall -Wno-name-shadowing
 
 test-suite tests

@@ -38,15 +38,21 @@ import MiniLight.Event
 import qualified SDL
 import qualified SDL.Font
 
-type FontMap = HM.HashMap FontDescriptor FilePath
-
 instance Hashable FontDescriptor where
   hashWithSalt n fd = let style = _descriptorStyle fd in hashWithSalt n (_descriptorFamilyName fd, _fontStyleBold style, _fontStyleItalic style)
 
-class HasLightEnv env where
-  rendererL :: Lens' env SDL.Renderer
-  fontCacheL :: Lens' env FontMap
-  loggerL :: Lens' env Caster.LogQueue
+
+type FontMap = HM.HashMap FontDescriptor FilePath
+
+-- | The environment for LightT monad.
+data LightEnv = LightEnv
+  { renderer :: SDL.Renderer  -- ^ Renderer for SDL2
+  , fontCache :: FontMap  -- ^ System font information
+  , logger :: Caster.LogQueue  -- ^ Logger connected stdout
+  }
+
+makeClassy_ ''LightEnv
+
 
 newtype LightT env m a = LightT { runLightT' :: ReaderT env m a }
   deriving (Functor, Applicative, Monad, MonadFail, MonadIO, MonadThrow, MonadMask, MonadCatch)
@@ -56,30 +62,15 @@ instance Monad m => MonadReader env (LightT env m) where
   local f = LightT . local f . runLightT'
 
 instance (Monad m, HasLightEnv env) => Caster.MonadLogger (LightT env m) where
-  getLogger = view loggerL
-
-data LightEnv = LightEnv
-  { renderer :: SDL.Renderer
-  , fontCache :: FontMap
-  , logger :: Caster.LogQueue
-  }
-
-instance HasLightEnv LightEnv where
-  rendererL = lens renderer (\env r -> env { renderer = r })
-  fontCacheL = lens fontCache (\env r -> env { fontCache = r })
-  loggerL = lens logger (\env r -> env { logger = r })
+  getLogger = view _logger
 
 type MiniLight = LightT LightEnv IO
 
 liftMiniLight :: (HasLightEnv env, MonadIO m) => MiniLight a -> LightT env m a
 liftMiniLight m = do
-  renderer  <- view rendererL
-  fontCache <- view fontCacheL
-  logger    <- view loggerL
+  env <- view lightEnv
 
-  LightT $ ReaderT $ \_ -> liftIO $ runReaderT
-    (runLightT' m)
-    (LightEnv {renderer = renderer, fontCache = fontCache, logger = logger})
+  LightT $ ReaderT $ \_ -> liftIO $ runReaderT (runLightT' m) env
 {-# INLINE liftMiniLight #-}
 
 envLightT :: (env' -> env) -> LightT env m a -> LightT env' m a
@@ -118,7 +109,7 @@ loadFont
   -> Int
   -> LightT env m SDL.Font.Font
 loadFont fd size = do
-  fc <- view fontCacheL
+  fc <- view _fontCache
   let path = fc HM.! fd
   SDL.Font.load path size
 

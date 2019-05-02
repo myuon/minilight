@@ -54,7 +54,7 @@ union x@(SDL.Rectangle (SDL.P c1) s1) y@(SDL.Rectangle (SDL.P c2) s2)
 -- | Render a figure.
 render :: (HasLightEnv env, MonadIO m, MonadMask m) => Figure -> LightT env m ()
 render fig = do
-  renderer <- view rendererL
+  renderer <- view _renderer
 
   SDL.copyEx renderer
              (texture fig)
@@ -139,7 +139,7 @@ instance Rendering Figure MiniLight where
   {-# INLINE rotate #-}
 
   text font color txt = do
-    renderer <- view rendererL
+    renderer <- view _renderer
 
     withBlendedText font txt color $ \surf -> do
       texture <- SDL.createTextureFromSurface renderer surf
@@ -150,7 +150,7 @@ instance Rendering Figure MiniLight where
   {-# INLINE text #-}
 
   picture filepath = do
-    renderer <- view rendererL
+    renderer <- view _renderer
 
     texture <- SDL.Image.loadTexture renderer filepath
     tinfo <- SDL.queryTexture texture
@@ -167,7 +167,7 @@ instance Rendering Figure MiniLight where
   {-# INLINE fromTexture #-}
 
   rectangleOutline color size = do
-    rend <- view rendererL
+    rend <- view _renderer
     tex <- SDL.createTexture rend SDL.RGBA8888 SDL.TextureAccessTarget (fmap toEnum size)
     SDL.textureBlendMode tex SDL.$= SDL.BlendAlphaBlend
 
@@ -180,7 +180,7 @@ instance Rendering Figure MiniLight where
   {-# INLINE rectangleOutline #-}
 
   rectangleFilled color size = do
-    rend <- view rendererL
+    rend <- view _renderer
     tex <- SDL.createTexture rend SDL.RGBA8888 SDL.TextureAccessTarget (fmap toEnum size)
     SDL.textureBlendMode tex SDL.$= SDL.BlendAlphaBlend
 
@@ -193,7 +193,7 @@ instance Rendering Figure MiniLight where
   {-# INLINE rectangleFilled #-}
 
   triangleOutline color size = do
-    rend <- view rendererL
+    rend <- view _renderer
     tex <- SDL.createTexture rend SDL.RGBA8888 SDL.TextureAccessTarget (fmap toEnum size)
     SDL.textureBlendMode tex SDL.$= SDL.BlendAlphaBlend
 
