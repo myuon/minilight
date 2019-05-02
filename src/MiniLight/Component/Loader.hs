@@ -79,7 +79,12 @@ loadAppConfig path mapper = do
         $ \component -> do
             reg <- view _registry
             R.register reg (getUID component) component
-            Caster.info $ "Component loaded: " <> show conf
+            Caster.info
+              $  "Component loaded: {name: "
+              <> show (name conf)
+              <> ", uid = "
+              <> show (uid conf)
+              <> "}"
 
             return conf
 
