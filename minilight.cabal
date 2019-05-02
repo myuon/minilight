@@ -33,6 +33,7 @@ source-repository head
 library
   exposed-modules:
     Control.Monad.Caster
+    Data.Vector.Mutable.PushBack
     Data.Registry
     Data.Registry.Class
     Data.Registry.HashTable
