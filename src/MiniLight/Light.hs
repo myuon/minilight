@@ -56,6 +56,9 @@ instance Monad m => MonadReader env (LightT env m) where
   ask = LightT ask
   local f = LightT . local f . runLightT'
 
+instance (Monad m, HasLightEnv env) => Caster.MonadLogger (LightT env m) where
+  getLogger = view loggerL
+
 data LightEnv = LightEnv
   { renderer :: SDL.Renderer
   , fontCache :: FontMap

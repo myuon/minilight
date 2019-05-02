@@ -9,9 +9,12 @@ module MiniLight.Component.Loader (
   assignUID,
 ) where
 
+import Control.Monad
+import Control.Monad.Catch
+import qualified Control.Monad.Caster as Caster
 import Control.Monad.IO.Class
 import Data.Aeson
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, catMaybes)
 import Data.Yaml (decodeFileEither)
 import MiniLight.Light
 import MiniLight.Component.Types
@@ -43,7 +46,7 @@ resolveAndAssignUIDConfig path =
   resolveConfig path >>= sequence . fmap assignUID
 
 -- | Load an config file and return it with the constructed components.
--- This will cause a runtime exception if the config file cannot be parsed.
+-- This will generate an error log and skip the component if the configuration is invalid.
 -- This function also assign unique IDs for each component, using 'assignUID'.
 loadAppConfig
   :: (HasLightEnv env, MonadIO m)
@@ -53,9 +56,14 @@ loadAppConfig
 loadAppConfig path mapper = do
   resolveAndAssignUIDConfig path >>= \case
     Left  err  -> error err
-    Right conf -> (,) <$> pure conf <*> mapM
-      ( \conf -> liftMiniLight
-        $ mapper (name conf) (fromJust $ uid conf) (properties conf)
+    Right conf -> liftM2 (,) (pure conf) $ fmap catMaybes $ mapM
+      ( \conf -> liftMiniLight $ do
+        result <- try
+          $ mapper (name conf) (fromJust $ uid conf) (properties conf)
+        case result of
+          Left msg ->
+            Caster.err (show (msg :: SomeException)) >> return Nothing
+          Right c -> return $ Just c
       )
       (app conf)
 

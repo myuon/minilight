@@ -9,13 +9,22 @@ module Control.Monad.Caster (
 
 import Control.Monad.IO.Class
 import Control.Concurrent
-import System.Log.Caster
+import System.Log.Caster as Caster
 
 class MonadLogger m where
+  getLogger :: MonadIO m => m LogQueue
+
   debug :: (MonadIO m, ToBuilder s) => s -> m ()
+  debug s = getLogger >>= \g -> Caster.debug g s
+
   info :: (MonadIO m, ToBuilder s) => s -> m ()
+  info s = getLogger >>= \g -> Caster.info g s
+
   warn :: (MonadIO m, ToBuilder s) => s -> m ()
+  warn s = getLogger >>= \g -> Caster.warn g s
+
   err :: (MonadIO m, ToBuilder s) => s -> m ()
+  err s = getLogger >>= \g -> Caster.err g s
 
 stdoutLogger :: LogLevel -> IO LogQueue
 stdoutLogger level = do
