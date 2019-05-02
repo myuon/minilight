@@ -59,3 +59,6 @@ asIOVector :: IOVector a -> IO (VM.IOVector a)
 asIOVector pvec@(IOVector vref _) =
   let len = length pvec
   in  len `seq` readIORef vref >>= (\vec -> return $ VM.slice 0 len vec)
+
+asUnsafeIOVector :: IOVector a -> VM.IOVector a
+asUnsafeIOVector pvec = unsafePerformIO $ asIOVector pvec
