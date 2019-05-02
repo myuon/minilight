@@ -85,6 +85,7 @@ envL = lens env (\e r -> e { env = r })
 instance HasLightEnv env => HasLightEnv (LoopEnv env) where
   rendererL = envL . rendererL
   fontCacheL = envL . fontCacheL
+  loggerL = envL . loggerL
 
 instance HasLoopEnv (LoopEnv env) where
   keyStatesL = lens keyStates (\env r -> env { keyStates = r })
@@ -94,6 +95,7 @@ instance HasLoopEnv (LoopEnv env) where
 instance HasLightEnv env => HasLightEnv (T.Text, env) where
   rendererL = _2 . rendererL
   fontCacheL = _2 . fontCacheL
+  loggerL = _2 . loggerL
 
 instance HasLoopEnv env => HasLoopEnv (T.Text, env) where
   keyStatesL = _2 . keyStatesL
@@ -207,7 +209,7 @@ runMainloop conv conf initial loop = do
           )
         $ \ev -> do
             confs0 <- liftIO $ readIORef (appConfig loopState)
-            resolveConfig "resources/app.yml" >>= \case
+            resolveConfig (fromJust $ appConfigFile conf) >>= \case
               Left  err   -> liftIO $ print err
               Right confs -> do
                 let d = diff confs0 confs
@@ -216,17 +218,12 @@ runMainloop conv conf initial loop = do
                   liftIO $ print (typ, compConf)
                   case typ of
                     Modify -> do
-
                       R.update
                         (components loopState)
                         (fromJust $ uid compConf)
-                        ( \_ ->
-                          liftMiniLight
-                            $       createComponentBy (componentResolver conf)
-                                                      compConf
-                            `catch` ( \e -> error $ "hoge: " ++ show
-                                      (e :: SomeException)
-                                    )
+                        ( \_ -> liftMiniLight $ createComponentBy
+                          (componentResolver conf)
+                          compConf
                         )
                     _ -> return ()
 
