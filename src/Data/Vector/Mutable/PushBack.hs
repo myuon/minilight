@@ -59,7 +59,8 @@ push pvec@(IOVector vref uvec) v = do
 fromList :: [a] -> IO (IOVector a)
 fromList xs = do
   vec  <- V.thaw $ V.fromList xs
-  vref <- newIORef vec
+  vec' <- VM.grow vec ((VM.length vec + 5) * 2)
+  vref <- newIORef vec'
   uvec <- VU.thaw $ VU.fromList [VM.length vec]
   return $ IOVector vref uvec
 
