@@ -2,6 +2,9 @@ module MiniLight.Component.Loader (
   module MiniLight.Component.Internal.Types,
   module MiniLight.Component.Internal.Diff,
 
+  LoaderEnv (..),
+  HasLoaderEnv (..),
+
   resolveConfig,
   resolveAndAssignUIDConfig,
   loadAppConfig,
@@ -9,18 +12,29 @@ module MiniLight.Component.Loader (
   assignUID,
 ) where
 
+import Control.Lens
 import Control.Monad
 import Control.Monad.Catch
 import qualified Control.Monad.Caster as Caster
 import Control.Monad.IO.Class
 import Data.Aeson
+import Data.IORef
 import Data.Maybe (fromJust, catMaybes)
+import qualified Data.Registry as R
 import Data.Yaml (decodeFileEither)
 import MiniLight.Light
 import MiniLight.Component.Types
 import MiniLight.Component.Internal.Types
 import MiniLight.Component.Internal.Diff
 import MiniLight.Component.Internal.Resolver (resolve)
+
+-- | The environment for config loader
+data LoaderEnv = LoaderEnv {
+  components :: R.Registry Component,
+  appConfig :: IORef AppConfig
+}
+
+makeClassy_ ''LoaderEnv
 
 toEither :: Result a -> Either String a
 toEither (Error   s) = Left s

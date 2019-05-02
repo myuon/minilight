@@ -43,8 +43,7 @@ main = do
     uid    <- newUID
     button <- newComponent uid =<< new
 
-    runMainloop
-      id
+    runMiniloop
       ( defConfig { appConfigFile        = Nothing
                   , additionalComponents = [button]
                   , componentResolver    = resolver

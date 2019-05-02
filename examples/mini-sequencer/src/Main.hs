@@ -56,8 +56,7 @@ main = do
 --    SDL.Mixer.play sound
 
     runLightT $ do
-      runMainloop
-        id
+      runMiniloop
         ( defConfig { appConfigFile     = Just "resources/app.yml"
                     , componentResolver = resolver
                     }

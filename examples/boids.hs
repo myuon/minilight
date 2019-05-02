@@ -113,8 +113,7 @@ main = do
   runLightT $ do
     pic <- triangleOutline (Vect.V4 100 100 100 255) (Vect.V2 10 20)
 
-    runMainloop
-      id
+    runMiniloop
       ( defConfig { appConfigFile        = Nothing
                   , additionalComponents = []
                   , componentResolver    = resolver

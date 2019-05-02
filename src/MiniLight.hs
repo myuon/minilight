@@ -11,8 +11,9 @@ module MiniLight (
   LoopState (..),
   LoopConfig (..),
   defConfig,
-  MiniLoop,
   runMainloop,
+  MiniLoop,
+  runMiniloop,
 ) where
 
 import Control.Concurrent (threadDelay, forkIO)
@@ -77,33 +78,46 @@ defConfig = LoopConfig
   }
 
 -- | The state in the mainloop.
-data LoopState env = LoopState {
-  env :: env,
+data LoopState = LoopState {
+  light :: LightEnv,
   loop :: LoopEnv,
-  components :: R.Registry Component,
-  appConfig :: IORef AppConfig
+  loader :: LoaderEnv
 }
 
 makeLensesWith classyRules_ ''LoopState
 
+-- | Type synonym to the minimal type of the mainloop
+type MiniLoop = LightT LoopState IO
 
-instance HasLightEnv env => HasLightEnv (LoopState env) where
-  lightEnv = _env . lightEnv
 
-instance HasLoopEnv (LoopState env) where
+-- These instances are used in the internal computation.
+instance HasLightEnv LoopState where
+  lightEnv = _light . lightEnv
+
+instance HasLoopEnv LoopState where
   loopEnv = _loop . loopEnv
 
-instance HasLightEnv env => HasLightEnv (T.Text, env) where
+instance HasLoaderEnv LoopState where
+  loaderEnv = _loader . loaderEnv
+
+
+instance HasLightEnv env' => HasLightEnv (env, env') where
   lightEnv = _2 . lightEnv
 
-instance HasLoopEnv env => HasLoopEnv (T.Text, env) where
+instance HasLoopEnv env' => HasLoopEnv (env, env') where
   loopEnv = _2 . loopEnv
+
+instance HasLoaderEnv env' => HasLoaderEnv (env, env') where
+  loaderEnv = _2 . loaderEnv
+
 
 instance HasComponentEnv (T.Text, env) where
   uidL = _1
 
--- | Type synonym to the minimal type of the mainloop
-type MiniLoop = LightT (LoopState LightEnv) IO
+
+-- | Same as 'runMainloop' but fixing the type.
+runMiniloop :: LoopConfig -> s -> (s -> MiniLoop s) -> MiniLight ()
+runMiniloop = runMainloop LoopState
 
 -- | Run a mainloop.
 -- In a mainloop, components and events are managed.
@@ -111,17 +125,18 @@ type MiniLoop = LightT (LoopState LightEnv) IO
 -- Components in a mainloop: draw ~ update ~ (user-defined function) ~ event handling
 runMainloop
   :: ( HasLightEnv env
-     , HasLightEnv loop
-     , HasLoopEnv loop
+     , HasLightEnv env'
+     , HasLoopEnv env'
+     , HasLoaderEnv env'
      , MonadIO m
      , MonadMask m
      )
-  => (LoopState env -> loop)  -- ^ LoopState conversion function (you can pass @id@, fixing @loop@ as @'LoopState' 'LightEnv'@)
-  -> LoopConfig  -- ^ loop config
-  -> s  -- ^ initial state
-  -> (s -> LightT loop m s)  -- ^ a function called in every loop
+  => (env -> LoopEnv -> LoaderEnv -> env')  -- ^ Environment conversion
+  -> LoopConfig  -- ^ Loop config
+  -> s  -- ^ Initial state
+  -> (s -> LightT env' m s)  -- ^ A function called in every loop
   -> LightT env m ()
-runMainloop conv conf initial loop = do
+runMainloop conv conf initial userloop = do
   events                <- liftIO $ newMVar []
   signalQueue           <- liftIO $ newIORef []
 
@@ -141,36 +156,25 @@ runMainloop conv conf initial loop = do
     (map (\c -> (getUID c, c)) $ compList ++ additionalComponents conf)
   config <- liftIO $ newIORef appConfig
 
-  env    <- view id
   go
-    ( LoopState
-      { env        = env
-      , loop       = LoopEnv
-        { keyStates   = HM.empty
-        , events      = events
-        , signalQueue = signalQueue
-        }
-      , components = reg
-      , appConfig  = config
-      }
-    )
+    (LoopEnv {keyStates = HM.empty, events = events, signalQueue = signalQueue})
+    (LoaderEnv {components = reg, appConfig = config})
     initial
  where
-  go loopState s = do
+  go loop loader s = do
     renderer <- view _renderer
     liftIO $ SDL.rendererDrawColor renderer SDL.$= 255
     liftIO $ SDL.clear renderer
 
-    R.forV_ (components loopState) $ \comp -> draw comp
+    R.forV_ (loader ^. _components) $ \comp -> draw comp
 
     -- state propagation
-    R.modifyV_ (components loopState) $ return . propagate
+    R.modifyV_ (loader ^. _components) $ return . propagate
 
-    R.modifyV_ (components loopState) $ \comp ->
-      envLightT (\env -> (getUID comp, conv $ loopState { env = env }))
-        $ update comp
+    R.modifyV_ (loader ^. _components) $ \comp ->
+      envLightT (\env -> (getUID comp, conv env loop loader)) $ update comp
 
-    s' <- envLightT (\env -> conv $ loopState { env = env }) $ loop s
+    s' <- envLightT (\env -> conv env loop loader) $ userloop s
 
     liftIO $ SDL.present renderer
 
@@ -178,7 +182,7 @@ runMainloop conv conf initial loop = do
     events <- SDL.pollEvents
     keys   <- SDL.getKeyboardState
 
-    envLightT (\env -> conv $ loopState { env = env }) $ do
+    envLightT (\env -> conv env loop loader) $ do
       evref   <- view _events
       sigref  <- view _signalQueue
       signals <- liftIO $ readIORef sigref
@@ -189,11 +193,11 @@ runMainloop conv conf initial loop = do
         . (signals ++)
       liftIO $ writeIORef sigref []
 
-    envLightT (\env -> conv $ loopState { env = env }) $ do
+    envLightT (\env -> conv env loop loader) $ do
       evref  <- view _events
       events <- liftIO $ modifyMVar evref (\a -> return ([], a))
 
-      R.modifyV_ (components loopState) $ \comp -> do
+      R.modifyV_ (loader ^. _components) $ \comp -> do
         foldlM (\comp ev -> envLightT ((,) (getUID comp)) $ onSignal ev comp)
                comp
                events
@@ -207,7 +211,7 @@ runMainloop conv conf initial loop = do
             events
           )
         $ \ev -> do
-            confs0 <- liftIO $ readIORef (appConfig loopState)
+            confs0 <- liftIO $ readIORef (loader ^. _appConfig)
             resolveConfig (fromJust $ appConfigFile conf) >>= \case
               Left  err   -> liftIO $ print err
               Right confs -> do
@@ -218,7 +222,7 @@ runMainloop conv conf initial loop = do
                   case typ of
                     Modify -> do
                       R.update
-                        (components loopState)
+                        (loader ^. _components)
                         (fromJust $ uid compConf)
                         ( \_ -> liftMiniLight $ createComponentBy
                           (componentResolver conf)
@@ -230,21 +234,20 @@ runMainloop conv conf initial loop = do
                 liftIO $ print d
                 liftIO $ print (applyDiff d confs0)
 
-                liftIO $ writeIORef (appConfig loopState) $ applyDiff d confs0
+                liftIO $ writeIORef (loader ^. _appConfig) $ applyDiff d confs0
 
-    let specifiedKeys = HM.mapWithKey
-          (\k v -> if keys k then v + 1 else 0)
-          (  maybe
-              id
-              ( \specified m -> HM.fromList $ map
-                (\s -> (s, if HM.member s m then m HM.! s else 0))
-                specified
-              )
-              (watchKeys conf)
-          $  loopState
-          ^. _keyStates
-          )
-    let loopState' = loopState & _loop . _keyStates .~ specifiedKeys
+    let loop' =
+          loop
+            &  _keyStates
+            %~ HM.mapWithKey (\k v -> if keys k then v + 1 else 0)
+            .  maybe
+                 id
+                 ( \specified m -> HM.fromList $ map
+                   (\s -> (s, if HM.member s m then m HM.! s else 0))
+                   specified
+                 )
+                 (watchKeys conf)
+
     let quit = any
           ( \event -> case SDL.eventPayload event of
             SDL.WindowClosedEvent _ -> True
@@ -253,4 +256,4 @@ runMainloop conv conf initial loop = do
           )
           events
 
-    unless quit $ go loopState' s'
+    unless quit $ go loop' loader s'
