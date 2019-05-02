@@ -50,4 +50,5 @@ applyDiff xs conf =
     $ flip map xs
     $ \(typ, path, c) -> case typ of
         Modify -> Rep path (toJSON $ properties c)
+        New    -> Add path (toJSON $ properties c)
         _      -> error "not supported"
