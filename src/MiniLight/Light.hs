@@ -1,5 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE RoleAnnotations #-}
+{-# LANGUAGE UndecidableInstances #-}
 module MiniLight.Light (
   HasLightEnv (..),
   LightT (..),
@@ -23,6 +25,7 @@ module MiniLight.Light (
 
 import Control.Concurrent.MVar
 import Control.Monad.IO.Class
+import qualified Control.Monad.Caster as Caster
 import Control.Monad.Catch
 import Control.Monad.Fail (MonadFail)
 import Control.Monad.Reader
@@ -44,6 +47,7 @@ instance Hashable FontDescriptor where
 class HasLightEnv env where
   rendererL :: Lens' env SDL.Renderer
   fontCacheL :: Lens' env FontMap
+  loggerL :: Lens' env Caster.LogQueue
 
 newtype LightT env m a = LightT { runLightT' :: ReaderT env m a }
   deriving (Functor, Applicative, Monad, MonadFail, MonadIO, MonadThrow, MonadMask, MonadCatch)
@@ -55,11 +59,13 @@ instance Monad m => MonadReader env (LightT env m) where
 data LightEnv = LightEnv
   { renderer :: SDL.Renderer
   , fontCache :: FontMap
+  , logger :: Caster.LogQueue
   }
 
 instance HasLightEnv LightEnv where
   rendererL = lens renderer (\env r -> env { renderer = r })
   fontCacheL = lens fontCache (\env r -> env { fontCache = r })
+  loggerL = lens logger (\env r -> env { logger = r })
 
 type MiniLight = LightT LightEnv IO
 
@@ -67,10 +73,11 @@ liftMiniLight :: (HasLightEnv env, MonadIO m) => MiniLight a -> LightT env m a
 liftMiniLight m = do
   renderer  <- view rendererL
   fontCache <- view fontCacheL
+  logger    <- view loggerL
 
   LightT $ ReaderT $ \_ -> liftIO $ runReaderT
     (runLightT' m)
-    (LightEnv {renderer = renderer, fontCache = fontCache})
+    (LightEnv {renderer = renderer, fontCache = fontCache, logger = logger})
 {-# INLINE liftMiniLight #-}
 
 envLightT :: (env' -> env) -> LightT env m a -> LightT env' m a

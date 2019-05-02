@@ -16,6 +16,7 @@ module MiniLight (
 
 import Control.Concurrent (threadDelay, forkIO)
 import Control.Concurrent.MVar
+import qualified Control.Monad.Caster as Caster
 import Control.Monad.Catch
 import Control.Monad.Reader
 import Data.Foldable (foldlM)
@@ -44,7 +45,9 @@ runLightT :: (MonadIO m, MonadMask m) => LightT LightEnv m a -> m a
 runLightT prog = withSDL $ withWindow $ \window -> do
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
   fc       <- loadFontCache
-  runReaderT (runLightT' prog) $ LightEnv {renderer = renderer, fontCache = fc}
+  logger   <- liftIO $ Caster.stdoutLogger Caster.LogDebug
+  runReaderT (runLightT' prog)
+    $ LightEnv {renderer = renderer, fontCache = fc, logger = logger}
 
 -- | Use 'defConfig' for a default setting.
 data LoopConfig = LoopConfig {
@@ -212,12 +215,19 @@ runMainloop conv conf initial loop = do
                 forM_ d $ \(typ, _, compConf) -> do
                   liftIO $ print (typ, compConf)
                   case typ of
-                    Modify -> R.update
-                      (components loopState)
-                      (fromJust $ uid compConf)
-                      ( \_ -> liftMiniLight
-                        $ createComponentBy (componentResolver conf) compConf
-                      )
+                    Modify -> do
+
+                      R.update
+                        (components loopState)
+                        (fromJust $ uid compConf)
+                        ( \_ ->
+                          liftMiniLight
+                            $       createComponentBy (componentResolver conf)
+                                                      compConf
+                            `catch` ( \e -> error $ "hoge: " ++ show
+                                      (e :: SomeException)
+                                    )
+                        )
                     _ -> return ()
 
                 liftIO $ print confs0
