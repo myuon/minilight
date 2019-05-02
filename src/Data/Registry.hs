@@ -24,6 +24,7 @@ instance IRegistry Registry where
   (!?) (Registry reg) t = (!?) reg t
   asVec (Registry reg) = asVec reg
   update (Registry reg) k v = update reg k v
+  register (Registry reg) k v = register reg k v
 
 -- | /O(n)/ Create a registry from a list. The current implementation uses a hashtable, defined in the module 'Data.Registry.HashTable'.
 fromList :: MonadIO m => [(T.Text, v)] -> m (Registry v)

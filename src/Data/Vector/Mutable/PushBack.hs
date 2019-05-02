@@ -26,12 +26,18 @@ read :: IOVector a -> Int -> IO a
 read (IOVector vref _) k = readIORef vref >>= \vec -> VM.read vec k
 
 -- | Get the position of the last cell in the @IOVector@. This operation is not safe because of the 'unsafePerformIO'.
+safeLength :: IOVector a -> IO Int
+safeLength (IOVector _ uvec) = VUM.read uvec 0
+
 length :: IOVector a -> Int
-length (IOVector _ uvec) = unsafePerformIO $ VUM.read uvec 0
+length pvec = unsafePerformIO $ safeLength pvec
+
+safeCapacity :: IOVector a -> IO Int
+safeCapacity (IOVector vref _) = fmap VM.length $ readIORef vref
 
 -- | Get the capacity of the @IOVector@. This operation is not safe because of the 'unsafePerformIO'.
 capacity :: IOVector a -> Int
-capacity (IOVector vref _) = unsafePerformIO $ fmap VM.length $ readIORef vref
+capacity pvec = unsafePerformIO $ safeCapacity pvec
 
 write :: IOVector a -> Int -> a -> IO ()
 write (IOVector vref _) i v = do
@@ -41,12 +47,14 @@ write (IOVector vref _) i v = do
 push :: IOVector a -> a -> IO ()
 push pvec@(IOVector vref uvec) v = do
   vec <- readIORef vref
-  when (length pvec == capacity pvec) $ do
-    vec' <- VM.grow vec (capacity pvec)
+  len <- safeLength pvec
+  cap <- safeCapacity pvec
+  when (len == cap) $ do
+    vec' <- VM.grow vec cap
     writeIORef vref vec'
 
-  write      pvec (length pvec) v
-  VUM.modify uvec (+ 1)         0
+  write      pvec len   v
+  VUM.modify uvec (+ 1) 0
 
 fromList :: [a] -> IO (IOVector a)
 fromList xs = do
@@ -56,9 +64,9 @@ fromList xs = do
   return $ IOVector vref uvec
 
 asIOVector :: IOVector a -> IO (VM.IOVector a)
-asIOVector pvec@(IOVector vref _) =
-  let len = length pvec
-  in  len `seq` readIORef vref >>= (\vec -> return $ VM.slice 0 len vec)
+asIOVector pvec@(IOVector vref _) = do
+  len <- safeLength pvec
+  readIORef vref >>= \vec -> return (VM.slice 0 len vec)
 
 asUnsafeIOVector :: IOVector a -> VM.IOVector a
 asUnsafeIOVector pvec = unsafePerformIO $ asIOVector pvec

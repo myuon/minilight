@@ -23,16 +23,8 @@ class IRegistry reg where
   -- | /O(1)/ Update, raise an exception if the key does not exists.
   update :: MonadIO m => reg v -> T.Text -> (v -> m v) -> m ()
 
---  -- | /O(n)/ Delete, the complexity would be reduced in the future.
---  delete :: MonadIO m => reg v -> T.Text -> m ()
-
---  -- | /O(n)/ Get the keys, should preserve the order (FIFO).
---  keys :: MonadIO m => reg v -> m [T.Text]
---  keys reg = fmap (map fst) $ toList reg
-
---  -- | /O(n)/ Convert the registry to the lazy list.
---  toList :: MonadIO m => reg v -> m [(T.Text, v)]
---  toList reg = keys reg >>= mapM (\k -> fmap ((,) k) $ reg ! k)
+  -- | /O(n)/ Adding a new value to the last position
+  register :: MonadIO m => reg v -> T.Text -> v -> m ()
 
   -- | /O(1)/ Get the underlying vector. Be careful: modifying the vector might cause a problem.
   asVec :: reg v -> VM.IOVector v

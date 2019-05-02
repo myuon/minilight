@@ -21,6 +21,11 @@ instance IRegistry (HashTableImpl T.Text) where
     i <- fmap fromJust $ liftIO $ H.lookup ht k
     liftIO (VMP.read vec i) >>= f >>= liftIO . VMP.write vec i
 
+  register (HashTableImpl ht vec) k v = liftIO $ do
+    len <- VMP.safeLength vec
+    VMP.push vec v
+    H.insert ht k len
+
   asVec (HashTableImpl _ vec) = VMP.asUnsafeIOVector vec
 
 fromListImpl :: MonadIO m => [(T.Text, v)] -> m (HashTableImpl T.Text v)
