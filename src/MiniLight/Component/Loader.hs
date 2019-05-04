@@ -99,9 +99,6 @@ patchAppConfig path resolver = flip runContT return $ callCC $ \jailbreak -> do
   cref      <- view _appConfig
   appConfig <- liftIO $ readIORef cref
 
-  compsV    <- liftIO $ V.unsafeThaw (app appConfig)
-  uuidsV    <- liftIO $ V.unsafeThaw (uuid appConfig)
-
   conf'     <- do
     mconf <- lift $ resolveConfig path
 
@@ -116,34 +113,45 @@ patchAppConfig path resolver = flip runContT return $ callCC $ \jailbreak -> do
         ( Diff.patchOperations
         $ Diff.diff (toJSON $ app appConfig) (toJSON $ app conf')
         )
-    $ \op -> do
-        Caster.info $ "CMR detected: " <> show op
+    $ \op -> flip runContT return $ callCC $ \jailbreak -> do
+        lift $ Caster.info $ "CMR detected: " <> show op
 
         case op of
           Add path@(Pointer [OKey "app", AKey i]) v -> do
-            let conf = (\(Success a) -> a) $ fromJSON v
+            compConf <- case fromJSON v of
+              Success a   -> return a
+              Error   err -> do
+                lift $ Caster.err err
+                jailbreak ()
+                undefined
 
-            newID  <- newUID
-            result <- liftMiniLight
-              $ resolver (name conf) newID (properties conf)
+            newID     <- lift $ newUID
+            component <- do
+              result <- lift $ liftMiniLight $ createComponentBy resolver
+                                                                 compConf
 
-            either
-              ( \e -> do
-                Caster.err $ "Component creation failed: " <> e
-                return Nothing
-              )
-              ( \c -> do
-                register c
-                Caster.info
-                  $  "Component inserted: {name: "
-                  <> show (name conf)
-                  <> ", uid = "
-                  <> show (uid conf)
-                  <> "}"
-                return $ Just op
-              )
-              result
-          _ -> return Nothing
+              case result of
+                Left err -> do
+                  lift $ Caster.err $ "Failed to resolve: " <> err
+                  jailbreak ()
+                  undefined
+                Right c -> return c
+
+            lift $ register component
+            lift
+              $  Caster.info
+              $  "Component registered: {name: "
+              <> show (name compConf)
+              <> ", uid = "
+              <> show (getUID component)
+              <> "}"
+
+            liftIO $ modifyIORef' cref $ \conf -> conf
+              { app  = V.snoc (app conf) compConf
+              , uuid = V.snoc (uuid conf) newID
+              }
+
+          _ -> return ()
 
 -- | Register a component to the component registry.
 register :: (HasLoaderEnv env, MonadIO m) => Component -> LightT env m ()
