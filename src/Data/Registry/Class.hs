@@ -20,8 +20,12 @@ class IRegistry reg where
   -- | /O(1)/ Safe indexing
   (!?) :: MonadIO m => reg v -> T.Text -> m (Maybe v)
 
-  -- | /O(1)/ Update, raise an exception if the key does not exists.
+  -- | /O(1)/ Update, raise an exception if the key does not exist.
   update :: MonadIO m => reg v -> T.Text -> (v -> m v) -> m ()
+  update reg k f = reg ! k >>= \v -> f v >>= \v' -> write reg k v'
+
+  -- | /O(1)/ Write, raise an exception if the key does not exist.
+  write :: MonadIO m => reg v -> T.Text -> v -> m ()
 
   -- | /O(n)/ Adding a new value to the last position
   register :: MonadIO m => reg v -> T.Text -> v -> m ()

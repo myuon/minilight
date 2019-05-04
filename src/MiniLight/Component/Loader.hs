@@ -150,6 +150,46 @@ patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
               , uuid = V.snoc (uuid conf) newID
               }
 
+          Rep (Pointer (AKey n:path)) v -> do
+            appConf  <- liftIO $ readIORef cref
+
+            compConf <-
+              case
+                Diff.applyOperation (Rep (Pointer path) v)
+                                    (toJSON (app appConf V.! n))
+                  >>= fromJSON
+              of
+                Success a   -> return a
+                Error   err -> do
+                  lift $ Caster.err err
+                  fail ""
+
+            let uid = uuid appConf V.! n
+
+            component <- lift $ do
+              result <- liftMiniLight
+                $ createComponentBy resolver (Just uid) compConf
+
+              case result of
+                Left err -> do
+                  Caster.err $ "Failed to resolve: " <> err
+                  fail ""
+                Right c -> return c
+
+            reg <- view _registry
+            lift $ R.write reg uid component
+            lift
+              $  Caster.info
+              $  "Component replaced: {name: "
+              <> show (name compConf)
+              <> ", uid: "
+              <> show (getUID component)
+              <> "}"
+
+            liftIO $ writeIORef cref $ appConf
+              { app = app appConf V.// [(n, compConf)]
+              }
+
           _ -> return ()
 
 -- | Register a component to the component registry.

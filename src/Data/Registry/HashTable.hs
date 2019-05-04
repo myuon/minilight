@@ -17,9 +17,9 @@ instance IRegistry (HashTableImpl T.Text) where
     i <- H.lookup reg k
     maybe (return Nothing) (fmap Just . VMP.read vec) i
 
-  update (HashTableImpl ht vec) k f = do
+  write (HashTableImpl ht vec) k v = liftIO $ do
     i <- fmap fromJust $ liftIO $ H.lookup ht k
-    liftIO (VMP.read vec i) >>= f >>= liftIO . VMP.write vec i
+    liftIO $ VMP.write vec i v
 
   register (HashTableImpl ht vec) k v = liftIO $ do
     len <- VMP.safeLength vec

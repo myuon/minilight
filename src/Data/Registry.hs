@@ -24,7 +24,7 @@ data Registry v = forall reg. IRegistry reg => Registry (reg v)
 instance IRegistry Registry where
   (!?) (Registry reg) t = (!?) reg t
   asVec (Registry reg) = asVec reg
-  update (Registry reg) k v = update reg k v
+  write (Registry reg) k v = write reg k v
   register (Registry reg) k v = register reg k v
 
 -- | /O(n)/ Create a registry from a list. The current implementation uses a hashtable, defined in the module 'Data.Registry.HashTable'.
