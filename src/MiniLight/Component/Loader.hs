@@ -45,10 +45,8 @@ toEither (Success a) = Right a
 resolveConfig :: MonadIO m => FilePath -> m (Either String AppConfig)
 resolveConfig path =
   liftIO
-    $   toEither
-    .   fromJSON
-    .   resolve
-    .   either (error . show) id
+    $   (toEither . fromJSON <=< fmap resolve)
+    .   either (Left . show) Right
     <$> decodeFileEither path
 
 -- | Load an config file and set in the environment. Calling this function at once, this overrides all values in the environment.
@@ -126,13 +124,14 @@ patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
                 fail ""
 
             newID     <- lift newUID
-            component <- lift $ do
-              result <- liftMiniLight
-                $ createComponentBy resolver (Just newID) compConf
+            component <- do
+              result <- lift $ liftMiniLight $ createComponentBy resolver
+                                                                 (Just newID)
+                                                                 compConf
 
               case result of
                 Left err -> do
-                  Caster.err $ "Failed to resolve: " <> err
+                  lift $ Caster.err $ "Failed to resolve: " <> err
                   fail ""
                 Right c -> return c
 
@@ -166,13 +165,14 @@ patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
 
             let uid = uuid appConf V.! n
 
-            component <- lift $ do
-              result <- liftMiniLight
-                $ createComponentBy resolver (Just uid) compConf
+            component <- do
+              result <- lift $ liftMiniLight $ createComponentBy resolver
+                                                                 (Just uid)
+                                                                 compConf
 
               case result of
                 Left err -> do
-                  Caster.err $ "Failed to resolve: " <> err
+                  lift $ Caster.err $ "Failed to resolve: " <> err
                   fail ""
                 Right c -> return c
 
