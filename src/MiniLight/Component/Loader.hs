@@ -7,7 +7,6 @@ module MiniLight.Component.Loader (
   resolveConfig,
   loadAppConfig,
   patchAppConfig,
-  register,
 ) where
 
 import Control.Lens
@@ -73,7 +72,8 @@ loadAppConfig path mapper = fmap (maybe () id) $ runMaybeT $ do
         Caster.err e
         return Nothing
       Right component -> do
-        register component
+        reg <- view _registry
+        R.register reg uid component
 
         Caster.info
           $  "Component loaded: {name: "
@@ -116,7 +116,7 @@ patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
         lift $ Caster.debug $ "CMR detected: " <> show op
 
         case op of
-          Add (Pointer [AKey _]) v      -> create v
+          Add (Pointer [AKey n]) v      -> create n v
           Rem (Pointer [AKey n])        -> remove n
           Rep (Pointer [AKey n     ]) v -> modify n (Rep (Pointer []) v)
           Rep (Pointer (AKey n:path)) v -> modify n (Rep (Pointer path) v)
@@ -128,7 +128,7 @@ patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
               $  "CMR does not support the operation yet: "
               <> show op
  where
-  create v = do
+  create n v = do
     cref     <- view _appConfig
     compConf <- case fromJSON v of
       Success a   -> return a
@@ -148,7 +148,9 @@ patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
           fail ""
         Right c -> return c
 
-    lift $ register component
+    reg <- view _registry
+    lift $ R.insert reg n (getUID component) component
+
     lift
       $  Caster.info
       $  "Component registered: {name: "
@@ -213,9 +215,3 @@ patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
 
     liftIO $ writeIORef cref $ appConf { app = app appConf V.// [(n, compConf)]
                                        }
-
--- | Register a component to the component registry.
-register :: (HasLoaderEnv env, MonadIO m) => Component -> LightT env m ()
-register component = do
-  reg <- view _registry
-  R.register reg (getUID component) component

@@ -49,3 +49,10 @@ spec_pushback = do
 
       actual <- V.freeze =<< VMP.asIOVector vec
       actual `shouldBe` V.fromList [1, 2, 3, 5]
+
+    it "can insert a value to the last" $ do
+      vec <- VMP.fromList [1 .. 5]
+      VMP.insert vec 5 999
+
+      actual <- V.freeze =<< VMP.asIOVector vec
+      actual `shouldBe` V.fromList [1, 2, 3, 4, 5, 999]
