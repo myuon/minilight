@@ -80,7 +80,7 @@ loadAppConfig path mapper = fmap (maybe () id) $ runMaybeT $ do
         Caster.info
           $  "Component loaded: {name: "
           <> show (name conf)
-          <> ", uid = "
+          <> ", uid: "
           <> show uid
           <> "}"
 
@@ -118,14 +118,14 @@ patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
         lift $ Caster.info $ "CMR detected: " <> show op
 
         case op of
-          Add path@(Pointer [OKey "app", AKey i]) v -> do
+          Add (Pointer [AKey _]) v -> do
             compConf <- case fromJSON v of
               Success a   -> return a
               Error   err -> do
                 lift $ Caster.err err
                 fail ""
 
-            newID     <- lift $ newUID
+            newID     <- lift newUID
             component <- do
               result <- lift $ liftMiniLight $ createComponentBy resolver
                                                                  compConf
@@ -141,7 +141,7 @@ patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
               $  Caster.info
               $  "Component registered: {name: "
               <> show (name compConf)
-              <> ", uid = "
+              <> ", uid: "
               <> show (getUID component)
               <> "}"
 
