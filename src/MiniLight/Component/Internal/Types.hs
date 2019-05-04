@@ -12,7 +12,6 @@ import MiniLight.Light
 
 data ComponentConfig = ComponentConfig {
   name :: T.Text,
-  uid :: Maybe T.Text,
   properties :: Value
 } deriving (Eq, Show, Generic)
 
@@ -43,6 +42,9 @@ newUID = liftIO $ Data.UUID.toText <$> Data.UUID.V4.nextRandom
 
 -- | Create a component with given resolver.
 createComponentBy
-  :: Resolver -> ComponentConfig -> MiniLight (Either String Component)
-createComponentBy resolver config = maybe newUID return (uid config)
-  >>= \u -> resolver (name config) u (properties config)
+  :: Resolver
+  -> Maybe T.Text
+  -> ComponentConfig
+  -> MiniLight (Either String Component)
+createComponentBy resolver uid config =
+  maybe newUID return uid >>= \u -> resolver (name config) u (properties config)

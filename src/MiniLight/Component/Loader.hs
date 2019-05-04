@@ -115,7 +115,7 @@ patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
         $ Diff.diff (toJSON $ app appConfig) (toJSON $ app conf')
         )
     $ \op -> fmap (maybe () id) $ runMaybeT $ do
-        lift $ Caster.info $ "CMR detected: " <> show op
+        lift $ Caster.debug $ "CMR detected: " <> show op
 
         case op of
           Add (Pointer [AKey _]) v -> do
@@ -126,13 +126,13 @@ patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
                 fail ""
 
             newID     <- lift newUID
-            component <- do
-              result <- lift $ liftMiniLight $ createComponentBy resolver
-                                                                 compConf
+            component <- lift $ do
+              result <- liftMiniLight
+                $ createComponentBy resolver (Just newID) compConf
 
               case result of
                 Left err -> do
-                  lift $ Caster.err $ "Failed to resolve: " <> err
+                  Caster.err $ "Failed to resolve: " <> err
                   fail ""
                 Right c -> return c
 
