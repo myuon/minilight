@@ -3,6 +3,7 @@ module MiniLight.Component.Internal.Types where
 
 import Data.Aeson
 import qualified Data.Text as T
+import qualified Data.Vector as V
 import qualified Data.UUID
 import qualified Data.UUID.V4
 import GHC.Generics
@@ -19,7 +20,7 @@ instance ToJSON ComponentConfig
 instance FromJSON ComponentConfig
 
 data AppConfig = AppConfig {
-  app :: [ComponentConfig]
+  app :: V.Vector ComponentConfig
 } deriving (Eq, Show, Generic)
 
 instance ToJSON AppConfig

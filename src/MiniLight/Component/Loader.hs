@@ -25,6 +25,7 @@ import Data.Aeson.Pointer
 import Data.IORef
 import Data.Maybe (fromJust, catMaybes)
 import qualified Data.Registry as R
+import qualified Data.Vector as V
 import Data.Yaml (decodeFileEither)
 import MiniLight.Light
 import MiniLight.Component.Types
@@ -75,7 +76,7 @@ loadAppConfig path mapper = do
   conf <- resolveAndAssignUIDConfig path
 
   (\m -> either Caster.err m conf) $ \conf -> do
-    confs <- fmap catMaybes $ forM (app conf) $ \conf -> do
+    confs <- fmap (V.mapMaybe id) $ V.forM (app conf) $ \conf -> do
       result <- liftMiniLight
         $ mapper (name conf) (fromJust $ uid conf) (properties conf)
 

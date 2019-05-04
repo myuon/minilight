@@ -1,5 +1,6 @@
 module MiniLight.Component.Internal.Diff where
 
+{-
 import Data.Aeson
 import qualified Data.Aeson.Diff as Diff
 import Data.Aeson.Pointer
@@ -52,3 +53,4 @@ applyDiff xs conf =
         Modify -> Rep path (toJSON $ properties c)
         New    -> Add path (toJSON $ properties c)
         _      -> error "not supported"
+-}

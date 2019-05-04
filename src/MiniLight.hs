@@ -28,6 +28,7 @@ import qualified Data.HashMap.Strict as HM
 import Data.Maybe
 import Data.IORef
 import qualified Data.Registry as R
+import qualified Data.Vector as V
 import qualified Data.Text as T
 import Graphics.Text.TrueType
 import MiniLight.Component
@@ -140,7 +141,7 @@ runMainloop conv conf initial userloop = do
   events      <- liftIO $ newMVar []
   signalQueue <- liftIO $ newIORef []
   reg         <- R.new
-  conf        <- liftIO $ newIORef $ AppConfig []
+  conf        <- liftIO $ newIORef $ AppConfig V.empty
 
   run
     (LoopEnv {keyStates = HM.empty, events = events, signalQueue = signalQueue})
