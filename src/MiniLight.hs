@@ -216,33 +216,9 @@ runMainloop conv conf initial userloop = do
             )
             events
           )
-        $ \ev -> do
-            confs0 <- liftIO $ readIORef (loader ^. _appConfig)
-            resolveConfig (fromJust $ appConfigFile conf) >>= \case
-              Left  err   -> liftIO $ print err
-              Right confs -> do
-                let d = diff confs0 confs
-
-                forM_ d $ \(typ, _, compConf) -> do
-                  liftIO $ print (typ, compConf)
-                  case typ of
-                    Modify -> do
-                      R.update
-                        (loader ^. _registry)
-                        (fromJust $ uid compConf)
-                        ( \_ ->
-                          fmap (\(Right a) -> a)
-                            $ liftMiniLight
-                            $ createComponentBy (componentResolver conf)
-                                                compConf
-                        )
-                    _ -> return ()
-
-                liftIO $ print confs0
-                liftIO $ print d
-                liftIO $ print (applyDiff d confs0)
-
-                liftIO $ writeIORef (loader ^. _appConfig) $ applyDiff d confs0
+        $ \ev -> patchAppConfig
+            (fromJust $ appConfigFile conf)
+            (componentResolver conf)
 
     let loop' =
           loop
