@@ -31,7 +31,7 @@ stdoutLogger level = do
   chan <- newLogChan
   q    <- newLogQueue
 
-  _    <- forkIO $ relayLog chan level stdoutListener
+  _    <- forkIO $ relayLog chan level terminalListener
   _    <- forkIO $ broadcastLog q chan
 
   return q
