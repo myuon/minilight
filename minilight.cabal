@@ -45,7 +45,6 @@ library
     MiniLight.Component.Types
     MiniLight.Component.Internal.Types
     MiniLight.Component.Internal.Resolver
-    MiniLight.Component.Internal.Diff
     MiniLight.Component.Loader
     Data.Config.Font
     Data.Component.Basic
