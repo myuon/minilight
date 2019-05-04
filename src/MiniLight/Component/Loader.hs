@@ -118,8 +118,15 @@ patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
         case op of
           Add (Pointer [AKey _]) v      -> create v
           Rem (Pointer [AKey n])        -> remove n
-          Rep (Pointer (AKey n:path)) v -> modify n path v
-          _                             -> return ()
+          Rep (Pointer [AKey n     ]) v -> modify n (Rep (Pointer []) v)
+          Rep (Pointer (AKey n:path)) v -> modify n (Rep (Pointer path) v)
+          Add (Pointer (AKey n:path)) v -> modify n (Add (Pointer path) v)
+          Rem (Pointer (AKey n:path))   -> modify n (Rem (Pointer path))
+          _ ->
+            lift
+              $  Caster.warn
+              $  "CMR does not support the operation yet: "
+              <> show op
  where
   create v = do
     cref     <- view _appConfig
@@ -170,15 +177,12 @@ patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
       , uuid = V.ifilter (\i _ -> i /= n) $ uuid appConf
       }
 
-  modify n path v = do
+  modify n op = do
     cref     <- view _appConfig
     appConf  <- liftIO $ readIORef cref
 
     compConf <-
-      case
-        Diff.applyOperation (Rep (Pointer path) v) (toJSON (app appConf V.! n))
-          >>= fromJSON
-      of
+      case Diff.applyOperation op (toJSON (app appConf V.! n)) >>= fromJSON of
         Success a   -> return a
         Error   err -> do
           lift $ Caster.err err
