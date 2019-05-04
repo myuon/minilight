@@ -12,9 +12,10 @@ module MiniLight.Component.Loader (
 
 import Control.Lens
 import Control.Monad
-import Control.Monad.Catch
-import Control.Monad.Cont
 import qualified Control.Monad.Caster as Caster
+import Control.Monad.Catch
+import Control.Monad.Trans
+import Control.Monad.Trans.Maybe
 import Data.Aeson
 import qualified Data.Aeson.Diff as Diff
 import Data.Aeson.Patch
@@ -58,11 +59,11 @@ loadAppConfig
   => FilePath  -- ^ Filepath to the yaml file.
   -> Resolver  -- ^ Specify any resolver.
   -> LightT env m ()
-loadAppConfig path mapper = flip runContT return $ callCC $ \jailbreak -> do
+loadAppConfig path mapper = fmap (maybe () id) $ runMaybeT $ do
   conf <- resolveConfig path >>= \case
     Left e -> do
       lift $ Caster.err e
-      jailbreak ()
+      fail ""
     Right r -> return r
 
   confs <- lift $ fmap (V.mapMaybe id) $ V.forM (app conf) $ \conf -> do
@@ -95,7 +96,7 @@ patchAppConfig
   => FilePath  -- ^ Filepath to the yaml file.
   -> Resolver  -- ^ Specify any resolver.
   -> LightT env m ()
-patchAppConfig path resolver = flip runContT return $ callCC $ \jailbreak -> do
+patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
   cref      <- view _appConfig
   appConfig <- liftIO $ readIORef cref
 
@@ -105,7 +106,7 @@ patchAppConfig path resolver = flip runContT return $ callCC $ \jailbreak -> do
     case mconf of
       Left e -> do
         lift $ Caster.err e
-        jailbreak ()
+        fail ""
       Right r -> return r
 
   lift
@@ -113,7 +114,7 @@ patchAppConfig path resolver = flip runContT return $ callCC $ \jailbreak -> do
         ( Diff.patchOperations
         $ Diff.diff (toJSON $ app appConfig) (toJSON $ app conf')
         )
-    $ \op -> flip runContT return $ callCC $ \jailbreak -> do
+    $ \op -> fmap (maybe () id) $ runMaybeT $ do
         lift $ Caster.info $ "CMR detected: " <> show op
 
         case op of
@@ -122,8 +123,7 @@ patchAppConfig path resolver = flip runContT return $ callCC $ \jailbreak -> do
               Success a   -> return a
               Error   err -> do
                 lift $ Caster.err err
-                jailbreak ()
-                undefined
+                fail ""
 
             newID     <- lift $ newUID
             component <- do
@@ -133,8 +133,7 @@ patchAppConfig path resolver = flip runContT return $ callCC $ \jailbreak -> do
               case result of
                 Left err -> do
                   lift $ Caster.err $ "Failed to resolve: " <> err
-                  jailbreak ()
-                  undefined
+                  fail ""
                 Right c -> return c
 
             lift $ register component

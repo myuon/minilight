@@ -22,10 +22,13 @@ instance FromJSON ComponentConfig
 data AppConfig = AppConfig {
   app :: V.Vector ComponentConfig,
   uuid :: V.Vector T.Text
-}
+} deriving (Eq, Show)
 
 instance FromJSON AppConfig where
-  parseJSON = withObject "app" $ \v -> v .: "app"
+  parseJSON = withObject "app" $ \v -> do
+    app <- v .: "app"
+
+    return $ AppConfig app V.empty
 
 -- | The type for component resolver
 type Resolver
