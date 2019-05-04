@@ -26,6 +26,7 @@ instance IRegistry Registry where
   asVec (Registry reg) = asVec reg
   write (Registry reg) k v = write reg k v
   register (Registry reg) k v = register reg k v
+  insert (Registry reg) i k v = insert reg i k v
   delete (Registry reg) k = delete reg k
 
 -- | /O(n)/ Create a registry from a list. The current implementation uses a hashtable, defined in the module 'Data.Registry.HashTable'.

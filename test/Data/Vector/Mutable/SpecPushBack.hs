@@ -1,6 +1,7 @@
 module Data.Vector.Mutable.SpecPushBack where
 
 import Control.Monad
+import qualified Data.Vector as V
 import qualified Data.Vector.Mutable.PushBack as VMP
 import Test.Tasty.Hspec hiding (Failure, Success)
 
@@ -26,11 +27,25 @@ spec_pushback = do
       VMP.push vec message
 
       actual <- VMP.read vec 0
-      message `shouldBe` actual
+      actual `shouldBe` message
 
     it "can push_back many times" $ do
       vec <- VMP.new 0
       forM_ [0 .. 1000] $ VMP.push vec
 
       actual <- VMP.read vec 999
-      999 `shouldBe` actual
+      actual `shouldBe` 999
+
+    it "can insert a value" $ do
+      vec <- VMP.fromList [1 .. 5]
+      VMP.insert vec 3 999
+
+      actual <- V.freeze =<< VMP.asIOVector vec
+      actual `shouldBe` V.fromList [1, 2, 3, 999, 4, 5]
+
+    it "can delete a value" $ do
+      vec <- VMP.fromList [1 .. 5]
+      VMP.delete vec 3
+
+      actual <- V.freeze =<< VMP.asIOVector vec
+      actual `shouldBe` V.fromList [1, 2, 3, 5]

@@ -31,6 +31,10 @@ instance IRegistry (HashTableImpl T.Text) where
     VMP.delete vec i
     H.delete ht k
 
+  insert (HashTableImpl ht vec) i k v = liftIO $ do
+    VMP.insert vec i v
+    H.insert ht k i
+
   asVec (HashTableImpl _ vec) = VMP.asUnsafeIOVector vec
 
 fromListImpl :: MonadIO m => [(T.Text, v)] -> m (HashTableImpl T.Text v)

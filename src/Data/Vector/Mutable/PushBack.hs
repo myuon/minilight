@@ -44,6 +44,19 @@ write (IOVector vref _) i v = do
   vec <- readIORef vref
   VM.write vec i v
 
+-- | /O(n)/ Insert a value into any place. This is a slow operation.
+insert
+  :: IOVector a  -- ^ The vector should have positive (non-zero) length
+  -> Int
+  -> a
+  -> IO ()
+insert pvec@(IOVector _ uvec) i v = do
+  len <- safeLength pvec
+
+  read pvec (len - 1) >>= push pvec
+  forM_ (reverse [i .. len - 2]) $ \j -> read pvec j >>= write pvec (j + 1)
+  write pvec i v
+
 -- | /O(n)/ This is a slow operation. This also throws an exception if the specified index does not exist.
 delete :: IOVector a -> Int -> IO ()
 delete pvec@(IOVector _ uvec) i = do

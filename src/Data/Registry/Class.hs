@@ -30,6 +30,9 @@ class IRegistry reg where
   -- | /O(1)/ Adding a new value to the last position
   register :: MonadIO m => reg v -> T.Text -> v -> m ()
 
+  -- | /O(n)/ Inserting a new value to the specified position (in the underlying vector)
+  insert :: MonadIO m => reg v -> Int -> T.Text -> v -> m ()
+
   -- | /O(n)/ Deleting the specified value (this is a slow operation).
   delete :: MonadIO m => reg v -> T.Text -> m ()
 
