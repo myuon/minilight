@@ -141,7 +141,7 @@ runMainloop conv conf initial userloop = do
   events      <- liftIO $ newMVar []
   signalQueue <- liftIO $ newIORef []
   reg         <- R.new
-  conf        <- liftIO $ newIORef $ AppConfig V.empty
+  conf        <- liftIO $ newIORef $ AppConfig V.empty V.empty
 
   run
     (LoopEnv {keyStates = HM.empty, events = events, signalQueue = signalQueue})

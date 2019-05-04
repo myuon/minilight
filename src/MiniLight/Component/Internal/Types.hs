@@ -20,7 +20,8 @@ instance ToJSON ComponentConfig
 instance FromJSON ComponentConfig
 
 data AppConfig = AppConfig {
-  app :: V.Vector ComponentConfig
+  app :: V.Vector ComponentConfig,
+  uuid :: V.Vector T.Text
 } deriving (Eq, Show, Generic)
 
 instance ToJSON AppConfig
