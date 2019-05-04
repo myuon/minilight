@@ -27,8 +27,11 @@ class IRegistry reg where
   -- | /O(1)/ Write, raise an exception if the key does not exist.
   write :: MonadIO m => reg v -> T.Text -> v -> m ()
 
-  -- | /O(n)/ Adding a new value to the last position
+  -- | /O(1)/ Adding a new value to the last position
   register :: MonadIO m => reg v -> T.Text -> v -> m ()
+
+  -- | /O(n)/ Deleting the specified value (this is a slow operation).
+  delete :: MonadIO m => reg v -> T.Text -> m ()
 
   -- | /O(1)/ Get the underlying vector. Be careful: modifying the vector might cause a problem.
   asVec :: reg v -> VM.IOVector v

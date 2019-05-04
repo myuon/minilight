@@ -3,7 +3,7 @@ IOVector here are supposed to be used in single thread situation.
 -}
 module Data.Vector.Mutable.PushBack where
 
-import Prelude hiding (length)
+import Prelude hiding (length, read)
 import Control.Monad
 import Data.IORef
 import qualified Data.Vector as V
@@ -43,6 +43,13 @@ write :: IOVector a -> Int -> a -> IO ()
 write (IOVector vref _) i v = do
   vec <- readIORef vref
   VM.write vec i v
+
+-- | /O(n)/ This is a slow operation. This also throws an exception if the specified index does not exist.
+delete :: IOVector a -> Int -> IO ()
+delete pvec@(IOVector _ uvec) i = do
+  len <- safeLength pvec
+  forM_ [i + 1 .. len - 1] $ \j -> read pvec j >>= write pvec (j - 1)
+  VUM.modify uvec (\x -> x - 1) 0
 
 push :: IOVector a -> a -> IO ()
 push pvec@(IOVector vref uvec) v = do

@@ -116,81 +116,99 @@ patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
         lift $ Caster.debug $ "CMR detected: " <> show op
 
         case op of
-          Add (Pointer [AKey _]) v -> do
-            compConf <- case fromJSON v of
-              Success a   -> return a
-              Error   err -> do
-                lift $ Caster.err err
-                fail ""
+          Add (Pointer [AKey _]) v      -> create v
+          Rem (Pointer [AKey n])        -> remove n
+          Rep (Pointer (AKey n:path)) v -> modify n path v
+          _                             -> return ()
+ where
+  create v = do
+    cref     <- view _appConfig
+    compConf <- case fromJSON v of
+      Success a   -> return a
+      Error   err -> do
+        lift $ Caster.err err
+        fail ""
 
-            newID     <- lift newUID
-            component <- do
-              result <- lift $ liftMiniLight $ createComponentBy resolver
-                                                                 (Just newID)
-                                                                 compConf
+    newID     <- lift newUID
+    component <- do
+      result <- lift $ liftMiniLight $ createComponentBy resolver
+                                                         (Just newID)
+                                                         compConf
 
-              case result of
-                Left err -> do
-                  lift $ Caster.err $ "Failed to resolve: " <> err
-                  fail ""
-                Right c -> return c
+      case result of
+        Left err -> do
+          lift $ Caster.err $ "Failed to resolve: " <> err
+          fail ""
+        Right c -> return c
 
-            lift $ register component
-            lift
-              $  Caster.info
-              $  "Component registered: {name: "
-              <> show (name compConf)
-              <> ", uid: "
-              <> show (getUID component)
-              <> "}"
+    lift $ register component
+    lift
+      $  Caster.info
+      $  "Component registered: {name: "
+      <> show (name compConf)
+      <> ", uid: "
+      <> show (getUID component)
+      <> "}"
 
-            liftIO $ modifyIORef' cref $ \conf -> conf
-              { app  = V.snoc (app conf) compConf
-              , uuid = V.snoc (uuid conf) newID
-              }
+    liftIO $ modifyIORef' cref $ \conf -> conf
+      { app  = V.snoc (app conf) compConf
+      , uuid = V.snoc (uuid conf) newID
+      }
 
-          Rep (Pointer (AKey n:path)) v -> do
-            appConf  <- liftIO $ readIORef cref
+  remove n = do
+    cref    <- view _appConfig
+    appConf <- liftIO $ readIORef cref
 
-            compConf <-
-              case
-                Diff.applyOperation (Rep (Pointer path) v)
-                                    (toJSON (app appConf V.! n))
-                  >>= fromJSON
-              of
-                Success a   -> return a
-                Error   err -> do
-                  lift $ Caster.err err
-                  fail ""
+    let uid = uuid appConf V.! n
 
-            let uid = uuid appConf V.! n
+    reg <- view _registry
+    lift $ R.delete reg uid
+    lift $ Caster.info $ "Component deleted: {uid: " <> show uid <> "}"
 
-            component <- do
-              result <- lift $ liftMiniLight $ createComponentBy resolver
-                                                                 (Just uid)
-                                                                 compConf
+    liftIO $ writeIORef cref $ appConf
+      { app  = V.ifilter (\i _ -> i /= n) $ app appConf
+      , uuid = V.ifilter (\i _ -> i /= n) $ uuid appConf
+      }
 
-              case result of
-                Left err -> do
-                  lift $ Caster.err $ "Failed to resolve: " <> err
-                  fail ""
-                Right c -> return c
+  modify n path v = do
+    cref     <- view _appConfig
+    appConf  <- liftIO $ readIORef cref
 
-            reg <- view _registry
-            lift $ R.write reg uid component
-            lift
-              $  Caster.info
-              $  "Component replaced: {name: "
-              <> show (name compConf)
-              <> ", uid: "
-              <> show (getUID component)
-              <> "}"
+    compConf <-
+      case
+        Diff.applyOperation (Rep (Pointer path) v) (toJSON (app appConf V.! n))
+          >>= fromJSON
+      of
+        Success a   -> return a
+        Error   err -> do
+          lift $ Caster.err err
+          fail ""
 
-            liftIO $ writeIORef cref $ appConf
-              { app = app appConf V.// [(n, compConf)]
-              }
+    let uid = uuid appConf V.! n
 
-          _ -> return ()
+    component <- do
+      result <- lift $ liftMiniLight $ createComponentBy resolver
+                                                         (Just uid)
+                                                         compConf
+
+      case result of
+        Left err -> do
+          lift $ Caster.err $ "Failed to resolve: " <> err
+          fail ""
+        Right c -> return c
+
+    reg <- view _registry
+    lift $ R.write reg uid component
+    lift
+      $  Caster.info
+      $  "Component replaced: {name: "
+      <> show (name compConf)
+      <> ", uid: "
+      <> show (getUID component)
+      <> "}"
+
+    liftIO $ writeIORef cref $ appConf { app = app appConf V.// [(n, compConf)]
+                                       }
 
 -- | Register a component to the component registry.
 register :: (HasLoaderEnv env, MonadIO m) => Component -> LightT env m ()
