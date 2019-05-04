@@ -29,7 +29,6 @@ import Control.Lens
 import Control.Monad.IO.Class
 import qualified Control.Monad.Caster as Caster
 import Control.Monad.Catch
-import Control.Monad.Fail (MonadFail)
 import Control.Monad.Reader
 import Data.Hashable (Hashable(..))
 import qualified Data.HashMap.Strict as HM
@@ -64,7 +63,7 @@ makeClassy_ ''LoopEnv
 
 
 newtype LightT env m a = LightT { runLightT' :: ReaderT env m a }
-  deriving (Functor, Applicative, Monad, MonadFail, MonadIO, MonadThrow, MonadMask, MonadCatch)
+  deriving (Functor, Applicative, Monad, MonadIO, MonadThrow, MonadMask, MonadCatch)
 
 instance Monad m => MonadReader env (LightT env m) where
   ask = LightT ask
