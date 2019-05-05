@@ -1,5 +1,11 @@
 # Revision history for minilight
 
+## 0.3 -- 2019-05-05
+
+* New features:
+    * Hot Config Replacement
+    * Stdout Logger
+
 ## 0.2 -- 2019-04-23
 
 * New features:
