@@ -8,10 +8,10 @@ jobs:
     steps:
       - checkout
       - run: apt update && apt install -y libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-gfx-dev
-      - run: cabal new-update
       - restore_cache:
           keys:
             - cabal-index-v1
+      - run: cabal new-update
       - run: cabal new-build
       - run: cabal new-test
       - save_cache:
