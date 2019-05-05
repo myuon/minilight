@@ -3,7 +3,7 @@ module Data.Component.MessageEngine where
 import Control.Lens
 import Control.Lens.TH.Rules
 import Control.Monad.State
-import Data.Aeson
+import Data.Aeson hiding ((.=))
 import qualified Data.Config.Font as Font
 import qualified Data.Text as T
 import qualified Data.Vector as V
@@ -70,10 +70,20 @@ instance ComponentUnit MessageEngine where
 
   useCache c1 c2 = page c1 == page c2 && textCounter c1 == textCounter c2
 
-  onSignal ev c = view uidL >>= \u -> go c (ev,u)
+  onSignal ev c = view uidL >>= \u -> go (ev,u) c
     where
-      go comp (uncurry asSignal -> Just NextPage) = return comp
-      go comp _ = return comp
+      go (uncurry asSignal -> Just NextPage) = execStateT $ do
+        _page %= (+1)
+        _textCounter .= 0
+
+        font <- use _fontData
+        fontColor <- use $ _config . _font . Font._color
+        p <- use _page
+        messages <- use $ _config . _messages
+        tex <- lift $ liftMiniLight $ text font fontColor (messages V.! p)
+        _textTexture .= tex
+
+      go _ = return
 
 new :: Config -> MiniLight MessageEngine
 new conf = do
