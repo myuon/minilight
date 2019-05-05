@@ -13,6 +13,8 @@ module MiniLight.Component (
 import Control.Lens
 import Control.Monad.Catch
 import Control.Monad.IO.Class
+import Data.Aeson
+import qualified Data.HashMap.Strict as HM
 import Data.IORef
 import qualified Data.Text as T
 import MiniLight.Light
@@ -24,6 +26,9 @@ class HasComponentEnv env where
   -- | Lens to the unique id, which is provided for each component.
   uidL :: Lens' env T.Text
 
+  -- | Get the hooks
+  hooksL :: Lens' env Object
+
 -- | Emit a signal, which will be catched at the next frame.
 emit
   :: (HasLoopEnv env, HasComponentEnv env, MonadIO m, EventType et)
@@ -33,6 +38,11 @@ emit et = do
   uid <- view uidL
   ref <- view _signalQueue
   liftIO $ modifyIORef' ref $ (signal uid et :)
+
+  hs <- view hooksL
+  case HM.lookup (getEventType et) hs of
+    Just ss -> liftIO $ modifyIORef' ref (GlobalSignal (getEventType et) ss :)
+    Nothing -> return ()
 
 -- | CompoonentUnit typeclass provides a way to define a new component.
 -- Any 'ComponentUnit' instance can be embedded into 'Component' type.

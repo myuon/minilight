@@ -11,6 +11,7 @@ module MiniLight.Event (
 ) where
 
 import qualified SDL
+import Data.Aeson
 import qualified Data.Text as T
 import Data.Type.Equality
 import Type.Reflection
@@ -37,6 +38,7 @@ fromDynamic (Dynamic t v) | Just HRefl <- t `eqTypeRep` rep = Just v
 -- | Event type representation
 data Event
   = Signal T.Text Dynamic
+  | GlobalSignal T.Text Value
   | RawEvent SDL.Event
   | NotifyEvent Notify.Event
 

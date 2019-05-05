@@ -5,6 +5,7 @@ import Control.Monad.State
 import Data.Aeson hiding ((.=))
 import qualified Data.Config.Font as Font
 import qualified Data.Text as T
+import Data.Typeable (Typeable)
 import qualified Data.Vector as V
 import Linear
 import MiniLight
@@ -63,6 +64,13 @@ instance FromJSON Config where
       <*> v .:? "labels" .!= V.empty
       <*> (parseJSON =<< (v .: "font"))
       <*> v .: "image"
+
+data SelectionEvent
+  = Selected Int
+  deriving (Typeable)
+
+instance EventType SelectionEvent where
+  getEventType (Selected _) = "selected"
 
 new :: Config -> MiniLight Selection
 new conf = do
