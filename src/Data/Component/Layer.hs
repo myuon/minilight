@@ -17,6 +17,10 @@ data Layer = Layer {
 instance ComponentUnit Layer where
   figures comp = return $ Basic.wrapFigures (basic $ config comp) [layer comp]
 
+  onSignal = Basic.wrapSignal (basic . config) (\_ -> return)
+
+  useCache _ _ = True
+
 data Config = Config {
   basic :: Basic.Config,
   image :: FilePath
