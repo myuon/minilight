@@ -6,6 +6,7 @@ import Control.Monad.State
 import Data.Aeson
 import qualified Data.Config.Font as Font
 import qualified Data.Text as T
+import Data.Typeable
 import MiniLight
 import qualified SDL
 import qualified SDL.Font
@@ -38,6 +39,11 @@ data MessageEngine = MessageEngine {
 
 makeLensesWith lensRules_ ''MessageEngine
 
+data EngineEvent = NextPage
+  deriving Typeable
+
+instance EventType EngineEvent
+
 instance ComponentUnit MessageEngine where
   update = execStateT $ do
     comp <- get
@@ -60,6 +66,11 @@ instance ComponentUnit MessageEngine where
       ]
 
   useCache c1 c2 = rendered c1 == rendered c2
+
+  onSignal ev c = view uidL >>= \u -> go c (ev,u)
+    where
+      go comp (uncurry asSignal -> Just NextPage) = return comp
+      go comp _ = return comp
 
 new :: Config -> MiniLight MessageEngine
 new conf = do

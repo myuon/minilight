@@ -98,6 +98,7 @@ library
     RankNTypes
     Strict
     TemplateHaskell
+    ViewPatterns
   ghc-options: -Wall -Wno-name-shadowing
 
 test-suite tests
