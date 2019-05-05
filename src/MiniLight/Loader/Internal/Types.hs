@@ -12,7 +12,8 @@ import MiniLight.Light
 
 data ComponentConfig = ComponentConfig {
   name :: T.Text,
-  properties :: Value
+  properties :: Value,
+  hooks :: Maybe Object
 } deriving (Eq, Show, Generic)
 
 instance ToJSON ComponentConfig
