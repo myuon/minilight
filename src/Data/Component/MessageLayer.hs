@@ -1,6 +1,7 @@
 module Data.Component.MessageLayer where
 
 import Control.Lens
+import Control.Lens.TH.Rules
 import Control.Monad.State
 import Data.Aeson
 import Linear
@@ -11,12 +12,28 @@ import qualified Data.Component.AnimationLayer as CAnim
 import qualified Data.Component.MessageEngine as CME
 import qualified SDL.Vect as Vect
 
+data Config = Config {
+  engine :: CME.Config,
+  window :: CLayer.Config,
+  next :: CAnim.Config
+}
+
+instance FromJSON Config where
+  parseJSON = withObject "config" $ \v -> do
+    layerConf <- parseJSON =<< v .: "window"
+    nextConf <- parseJSON =<< v .: "next"
+    messageEngineConf <- parseJSON =<< v .: "engine"
+
+    return $ Config messageEngineConf layerConf nextConf
+
 data MessageLayer = MessageLayer {
   messageEngine :: CME.MessageEngine,
   layer :: CLayer.Layer,
   cursor :: CAnim.AnimationLayer,
   config :: Config
 }
+
+makeLensesWith lensRules_ ''MessageLayer
 
 engineL :: Lens' MessageLayer CME.MessageEngine
 engineL = lens messageEngine (\s a -> s { messageEngine = a })
@@ -48,19 +65,15 @@ instance ComponentUnit MessageLayer where
       ++ map (translate (position + Vect.V2 20 10)) textLayer
       ++ map (translate (position + Vect.V2 ((windowSize ^. _x - cursorSize ^. _x) `div` 2) (windowSize ^. _y - cursorSize ^. _y))) cursorLayer
 
-data Config = Config {
-  engine :: CME.Config,
-  window :: CLayer.Config,
-  next :: CAnim.Config
-}
+  onSignal
+    = Basic.wrapSignal (CLayer.basic . CLayer.config . layer)
+    $ CME.wrapSignal _messageEngine
+    $ \ev c -> view uidL >>= \u -> go (ev,u) c
+      where
+        go (uncurry asSignal -> Just (Basic.MouseReleased _)) = execStateT $ do
+          lift $ emit CME.NextPage
 
-instance FromJSON Config where
-  parseJSON = withObject "config" $ \v -> do
-    layerConf <- parseJSON =<< v .: "window"
-    nextConf <- parseJSON =<< v .: "next"
-    messageEngineConf <- parseJSON =<< v .: "engine"
-
-    return $ Config messageEngineConf layerConf nextConf
+        go _ = return
 
 new :: Config -> MiniLight MessageLayer
 new conf = do

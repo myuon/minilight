@@ -3,6 +3,7 @@ module Data.Component.MessageEngine where
 import Control.Lens
 import Control.Lens.TH.Rules
 import Control.Monad.State
+import Control.Monad.Catch (MonadMask)
 import Data.Aeson hiding ((.=))
 import qualified Data.Config.Font as Font
 import qualified Data.Text as T
@@ -49,17 +50,19 @@ instance EventType EngineEvent
 
 instance ComponentUnit MessageEngine where
   update = execStateT $ do
-    comp <- get
+    fin <- use _finished
+    unless fin $ do
+      cnt <- use _counter
+      when (cnt `mod` 10 == 0) $ do
+        _textCounter %= (+1)
 
-    unless (finished comp) $ do
-      when (counter comp `mod` 10 == 0) $ do
-        id %= (\c -> c { textCounter = textCounter c + 1 })
+        tc <- use _textCounter
+        p <- use _page
+        messages <- use $ _config . _messages
+        when (p == V.length messages - 1 && tc == T.length (messages V.! p)) $ do
+          _finished .= True
 
-        comp <- get
-        when (comp ^. _textCounter == T.length ((config comp ^. _messages) V.! (comp ^. _page))) $ do
-          id %= (\c -> c { finished = True })
-
-      id %= (\c -> c { counter = counter c + 1 })
+      _counter %= (+1)
 
   figures comp = do
     (w, h) <- SDL.Font.size (comp ^. _fontData) (T.take (comp ^. _textCounter) $ (config comp ^. _messages) V.! (comp ^. _page))
@@ -73,15 +76,17 @@ instance ComponentUnit MessageEngine where
   onSignal ev c = view uidL >>= \u -> go (ev,u) c
     where
       go (uncurry asSignal -> Just NextPage) = execStateT $ do
-        _page %= (+1)
-        _textCounter .= 0
+        fin <- use _finished
+        unless fin $ do
+          _page %= (+1)
+          _textCounter .= 0
 
-        font <- use _fontData
-        fontColor <- use $ _config . _font . Font._color
-        p <- use _page
-        messages <- use $ _config . _messages
-        tex <- lift $ liftMiniLight $ text font fontColor (messages V.! p)
-        _textTexture .= tex
+          font <- use _fontData
+          fontColor <- use $ _config . _font . Font._color
+          p <- use _page
+          messages <- use $ _config . _messages
+          tex <- lift $ liftMiniLight $ text font fontColor (messages V.! p)
+          _textTexture .= tex
 
       go _ = return
 
@@ -99,3 +104,23 @@ new conf = do
     , finished    = static conf
     , config      = conf
     }
+
+wrapSignal
+  :: ( HasLightEnv env
+     , HasLoopEnv env
+     , HasComponentEnv env
+     , MonadIO m
+     , MonadMask m
+     )
+  => (Lens' c MessageEngine)
+  -> (Event -> c -> LightT env m c)
+  -> (Event -> c -> LightT env m c)
+wrapSignal lens f ev = execStateT $ do
+  zoom lens $ do
+    st  <- use id
+    st' <- lift $ onSignal ev st
+    id .= st'
+
+  st  <- use id
+  st' <- lift $ f ev st
+  id .= st'
