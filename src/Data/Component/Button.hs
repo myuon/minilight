@@ -17,7 +17,8 @@ data Button = Button {
 data ButtonEvent = Click
   deriving Typeable
 
-instance EventType ButtonEvent
+instance EventType ButtonEvent where
+  getEventType Click = "click"
 
 instance ComponentUnit Button where
   update = return

@@ -60,7 +60,10 @@ data Signal where
     -> Signal
   deriving Typeable
 
-instance EventType Signal
+instance EventType Signal where
+  getEventType (MousePressed _) = "mouse-pressed"
+  getEventType (MouseReleased _) = "mouse-released"
+  getEventType (MouseOver _) = "mouse-over"
 
 -- | This automatically applies basic configuration such as: position.
 wrapFigures :: Config -> [Figure] -> [Figure]

@@ -1,10 +1,11 @@
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module MiniLight.Event (
   Event (..),
-  EventType,
+  EventType (..),
   signal,
   asSignal,
 ) where
@@ -16,7 +17,10 @@ import Type.Reflection
 import qualified System.FSNotify as Notify
 
 -- | EventType says some type can be used as an event type.
-class Typeable e => EventType e
+class Typeable e => EventType e where
+  getEventType :: e -> T.Text
+  default getEventType :: Show e => e -> T.Text
+  getEventType = T.pack . show
 
 -- | This type is same as 'Dynamic' from @Data.Dynamic@, but it requires 'EventType' contraint.
 data Dynamic where
@@ -32,8 +36,7 @@ fromDynamic (Dynamic t v) | Just HRefl <- t `eqTypeRep` rep = Just v
 
 -- | Event type representation
 data Event
-  = Never
-  | Signal T.Text Dynamic
+  = Signal T.Text Dynamic
   | RawEvent SDL.Event
   | NotifyEvent Notify.Event
 

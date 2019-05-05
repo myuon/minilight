@@ -46,7 +46,8 @@ makeLensesWith lensRules_ ''MessageEngine
 data EngineEvent = NextPage
   deriving Typeable
 
-instance EventType EngineEvent
+instance EventType EngineEvent where
+  getEventType NextPage = "next-page"
 
 instance ComponentUnit MessageEngine where
   update = execStateT $ do
