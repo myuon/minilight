@@ -1,23 +1,42 @@
 module Data.Component.MessageEngine where
 
 import Control.Lens
+import Control.Lens.TH.Rules
 import Control.Monad.State
 import Data.Aeson
+import qualified Data.Config.Font as Font
 import qualified Data.Text as T
-import Data.Word (Word8)
 import MiniLight
 import qualified SDL
 import qualified SDL.Font
 import qualified SDL.Vect as Vect
 
+data Config = Config {
+  messages :: T.Text,
+  static :: Bool,
+  font :: Font.Config
+}
+
+makeLensesWith lensRules_ ''Config
+
+instance FromJSON Config where
+  parseJSON = withObject "config" $ \v -> do
+    messages <- v .: "messages"
+    static <- v .:? "static" .!= False
+    font <- v .: "font"
+
+    return $ Config messages static font
+
 data MessageEngine = MessageEngine {
-  font :: SDL.Font.Font,
+  fontData :: SDL.Font.Font,
   counter :: Int,
   rendered :: Int,
   textTexture :: Figure,
   finished :: Bool,
   config :: Config
 }
+
+makeLensesWith lensRules_ ''MessageEngine
 
 instance ComponentUnit MessageEngine where
   update = execStateT $ do
@@ -34,42 +53,19 @@ instance ComponentUnit MessageEngine where
       id %= (\c -> c { counter = counter c + 1 })
 
   figures comp = do
-    (w, h) <- SDL.Font.size (font comp) (T.take (rendered comp) $ messages (config comp))
+    (w, h) <- SDL.Font.size (comp ^. _fontData) (T.take (rendered comp) $ messages (config comp))
 
     return [
       clip (SDL.Rectangle 0 (Vect.V2 w h)) $ textTexture comp
       ]
 
-data Config = Config {
-  messages :: T.Text,
-  static :: Bool,
-  color :: Vect.V4 Word8,
-  fontConf :: FontDescriptor,
-  fontSize :: Int
-}
-
-instance FromJSON Config where
-  parseJSON = withObject "config" $ \v -> do
-    messages <- v .: "messages"
-    static <- v .:? "static" .!= False
-    [r,g,b,a] <- v .:? "color" .!= [255, 255, 255, 255]
-    (fontConf, size) <- (v .: "font" >>=) $ withObject "font" $ \v -> do
-      family <- v .: "family"
-      size <- v .: "size"
-      bold <- v .:? "bold" .!= False
-      italic <- v .:? "italic" .!= False
-
-      return $ (FontDescriptor family (FontStyle bold italic), size)
-
-    return $ Config messages static (Vect.V4 r g b a) fontConf size
-
 new :: Config -> MiniLight MessageEngine
 new conf = do
-  font        <- loadFont (fontConf conf) (fontSize conf)
-  textTexture <- text font (color conf) $ messages conf
+  font        <- Font.loadFontFrom (font conf)
+  textTexture <- text font (conf ^. _font ^. Font._color) $ messages conf
 
   return $ MessageEngine
-    { font        = font
+    { fontData    = font
     , counter     = 0
     , rendered    = if static conf then T.length (messages conf) else 0
     , textTexture = textTexture

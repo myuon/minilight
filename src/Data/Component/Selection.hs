@@ -61,7 +61,7 @@ instance FromJSON Config where
     Config
       <$> parseJSON (Object v)
       <*> v .:? "labels" .!= V.empty
-      <*> parseJSON (Object v)
+      <*> (parseJSON =<< (v .: "font"))
       <*> v .: "image"
 
 new :: Config -> MiniLight Selection

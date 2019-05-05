@@ -32,6 +32,7 @@ source-repository head
 
 library
   exposed-modules:
+    Control.Lens.TH.Rules
     Control.Monad.Caster
     Data.Vector.Mutable.PushBack
     Data.Registry

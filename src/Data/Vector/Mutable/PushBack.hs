@@ -50,7 +50,7 @@ insert
   -> Int
   -> a
   -> IO ()
-insert pvec@(IOVector _ uvec) i v = do
+insert pvec i v = do
   len <- safeLength pvec
 
   read pvec (len - 1) >>= push pvec
