@@ -59,6 +59,8 @@ instance ComponentUnit MessageEngine where
       clip (SDL.Rectangle 0 (Vect.V2 w h)) $ textTexture comp
       ]
 
+  useCache c1 c2 = rendered c1 == rendered c2
+
 new :: Config -> MiniLight MessageEngine
 new conf = do
   font        <- Font.loadFontFrom (font conf)
