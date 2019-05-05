@@ -43,10 +43,9 @@ library
     MiniLight.Light
     MiniLight.Event
     MiniLight.Component
-    MiniLight.Component.Types
-    MiniLight.Component.Internal.Types
-    MiniLight.Component.Internal.Resolver
-    MiniLight.Component.Loader
+    MiniLight.Loader.Internal.Types
+    MiniLight.Loader.Internal.Resolver
+    MiniLight.Loader
     Data.Config.Font
     Data.Component.Basic
     Data.Component.Layer

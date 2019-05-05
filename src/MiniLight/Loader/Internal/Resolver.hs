@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
-module MiniLight.Component.Internal.Resolver where
+module MiniLight.Loader.Internal.Resolver where
 
 import Control.Applicative
 import Data.Aeson hiding (Result)

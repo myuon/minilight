@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-module MiniLight.Component.Internal.Types where
+module MiniLight.Loader.Internal.Types where
 
 import Data.Aeson
 import qualified Data.Text as T
@@ -7,7 +7,7 @@ import qualified Data.Vector as V
 import qualified Data.UUID
 import qualified Data.UUID.V4
 import GHC.Generics
-import MiniLight.Component.Types
+import MiniLight.Component
 import MiniLight.Light
 
 data ComponentConfig = ComponentConfig {

@@ -6,6 +6,7 @@ module MiniLight (
   module MiniLight.Event,
   module MiniLight.Figure,
   module MiniLight.Component,
+  module MiniLight.Loader,
 
   runLightT,
   LoopState (..),
@@ -35,6 +36,7 @@ import MiniLight.Component
 import MiniLight.Event
 import MiniLight.Figure
 import MiniLight.Light
+import MiniLight.Loader
 import qualified System.FSNotify as Notify
 import qualified SDL
 import qualified SDL.Font
