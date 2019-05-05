@@ -32,6 +32,14 @@ spec_parser = do
       case parseString parser mempty "${-0.999}" of
         Success e   -> e `shouldBe` Constant (Number (-0.999))
         Failure err -> expectationFailure $ show err
+    it "parses a plus" $ do
+      case parseString parser mempty "${10 + 20}" of
+        Success e   -> e `shouldBe` Op "+" (Constant (Number 10)) (Constant (Number 20))
+        Failure err -> expectationFailure $ show err
+    it "parses a times" $ do
+      case parseString parser mempty "${10 * 20}" of
+        Success e   -> e `shouldBe` Op "*" (Constant (Number 10)) (Constant (Number 20))
+        Failure err -> expectationFailure $ show err
     it "parses a complex expression" $ do
       case parseString parser mempty "${${ref:hoge} + 200 * 10 - 100}" of
         Success e -> e `shouldBe` Op
@@ -41,6 +49,22 @@ spec_parser = do
                (Op "*" (Constant (Number 200)) (Constant (Number 10)))
           )
           (Constant (Number 100))
+        Failure err -> expectationFailure $ show err
+    it "parses a $-symbol" $ do
+      case parseString parser mempty "${$index}" of
+        Success e -> e `shouldBe` Symbol "index"
+        Failure err -> expectationFailure $ show err
+    it "parses a simpl function application" $ do
+      case parseString parser mempty "${$func(10)}" of
+        Success e -> e `shouldBe` App (Symbol "func") [Constant (Number 10)]
+        Failure err -> expectationFailure $ show err
+    it "parses a no arg application" $ do
+      case parseString parser mempty "${$func()}" of
+        Success e -> e `shouldBe` App (Symbol "func") []
+        Failure err -> expectationFailure $ show err
+    it "parses a function application" $ do
+      case parseString parser mempty "${$func(10,$index,${ref:hoge})}" of
+        Success e -> e `shouldBe` App (Symbol "func") [Constant (Number 10), Symbol "index", Ref "hoge"]
         Failure err -> expectationFailure $ show err
 
 spec_resolver :: Spec

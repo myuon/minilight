@@ -17,14 +17,22 @@ data Expr
   | Var T.Text  -- ^ variable syntax: ${var:...}
   | Op T.Text Expr Expr  -- ^ expr operator: +, -, *, /
   | Constant Value  -- ^ constants (string or number or null)
+  | Symbol T.Text  -- ^ token symbol
+  | App Expr [Expr]  -- ^ function application ($func(a,b,c))
   deriving (Eq, Show)
 
 parser :: Parser Expr
-parser = try reference <|> try variable <|> (char '$' *> braces (number <|> expr))
+parser = try reference <|> try variable <|> try (char '$' *> braces expr)
  where
   expr      = chainl expr1 op1 None
   expr1     = chainl expr2 op2 None
-  expr2     = parens expr <|> try reference <|> try variable <|> try number
+  expr2     = parens expr
+    <|> try apply
+    <|> try parameter
+    <|> try reference
+    <|> try variable
+    <|> try number
+    <|> try strlit
 
   -- low precedence infixl operator group
   op1       = Op "+" <$ textSymbol "+" <|> Op "-" <$ textSymbol "-"
@@ -32,14 +40,20 @@ parser = try reference <|> try variable <|> (char '$' *> braces (number <|> expr
   -- high precedence infixl operator group
   op2       = Op "*" <$ textSymbol "*" <|> Op "/" <$ textSymbol "/"
 
-  reference = do
-    char '$'
+  reference = char '$' *> do
     braces $ text "ref:" *> (fmap (Ref . T.pack) (many (letter <|> oneOf ".")))
-  variable = do
-    char '$'
+  variable = char '$' *> do
     braces $ text "var:" *> (fmap (Var . T.pack) (many (letter <|> oneOf ".")))
   number = fmap (Constant . Number . either fromIntegral fromFloatDigits)
                 integerOrDouble
+  strlit = fmap (Constant . String) $ stringLiteral
+
+  parameter = char '$' *> do
+    fmap (Symbol . T.pack) $ (:) <$> letter <*> many (letter <|> digit)
+  apply = do
+    func <- parameter
+    exps <- parens $ option [] $ fmap (filter (/= None)) $ try $ (:) <$> expr <*> expr `sepBy` (char ',')
+    return $ App func exps
 
 data Context = Context {
   path :: V.Vector (Either Int T.Text),
