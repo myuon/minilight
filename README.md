@@ -77,7 +77,7 @@ app:
           size: 22
 ```
 
-For the configuration syntax, see [MiniLight.Component](https://hackage.haskell.org/package/minilight-0.2.0/docs/MiniLight-Component.html).
+For the configuration syntax, see [MiniLight.Loader](https://hackage.haskell.org/package/minilight/docs/MiniLight-Loader.html).
 
 For the pre-defined components, see the modules under `Data.Component`.
 

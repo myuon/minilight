@@ -64,7 +64,7 @@ runLightT prog = withSDL $ withWindow $ \window -> do
 -- | Use 'defConfig' for a default setting.
 data LoopConfig = LoopConfig {
   watchKeys :: Maybe [SDL.Scancode],  -- ^ Set @Nothing@ if all keys should be watched. See also 'LoopState'.
-  appConfigFile :: Maybe FilePath,  -- ^ Specify a yaml file which describes component settings. See 'MiniLight.Component' for the yaml syntax.
+  appConfigFile :: Maybe FilePath,  -- ^ Specify a yaml file which describes component settings. See 'MiniLight.Loader' for the yaml syntax.
   hotConfigReplacement :: Maybe FilePath,  -- ^ The directory path to be watched. If set, the config file modification will replace the component dynamically.
   componentResolver :: Resolver,  -- ^ Your custom mappings between a component name and its type.
   additionalComponents :: [Component]  -- ^ The components here would be added during the initialization.
