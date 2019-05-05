@@ -11,11 +11,11 @@ jobs:
       - run: cabal new-update
       - restore_cache:
           keys:
-            - cabal-index-{{ checksum "~/.cabal/packages/hackage.haskell.org/01-index.cache" }}-v1
+            - cabal-index-v1
       - run: cabal new-build
       - run: cabal new-test
       - save_cache:
-          key: cabal-index-{{ checksum "~/.cabal/packages/hackage.haskell.org/01-index.cache" }}-v1
+          key: cabal-index-v1
           paths:
             - ~/.cabal
       - persist_to_workspace:
@@ -32,25 +32,10 @@ jobs:
       - run: cabal new-update
       - restore_cache:
           keys:
-            - cabal-index-{{ checksum "~/.cabal/packages/hackage.haskell.org/01-index.cache" }}-v1
+            - cabal-index-v1
       - attach_workspace:
           at: .
       - run: cd examples/mini-sequencer && cabal new-build
-  build-examples:
-    working_directory: ~/workspace
-    docker:
-      - image: haskell:8.6.3
-    steps:
-      - checkout
-      - run: apt update && apt install -y libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev libsdl2-gfx-dev
-      - run: cabal new-update
-      - restore_cache:
-          keys:
-            - cabal-index-{{ checksum "~/.cabal/packages/hackage.haskell.org/01-index.cache" }}-v1
-      - attach_workspace:
-          at: .
-      - run: cabal new-build button-counter
-      - run: cabal new-build boids
 
 workflows:
   version: 2
@@ -60,8 +45,5 @@ workflows:
     jobs:
       - build-8_6_3
       - build-mini-sequencer:
-          requires:
-            - build-8_6_3
-      - build-examples:
           requires:
             - build-8_6_3
