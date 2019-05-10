@@ -71,18 +71,18 @@ data Context = Context {
   target :: Value
 }
 
-getAt :: Value -> [Either Int T.Text] -> Value
+getAt :: Value -> [Either Int T.Text] -> Either T.Text Value
 getAt = go
  where
-  go value        [] = value
+  go value        [] = Right value
   go (Object obj) (Right key:ps) | key `HM.member` obj = go (obj HM.! key) ps
   go (Array  arr) (Left  i  :ps) | 0 <= i && i < V.length arr = go (arr V.! i) ps
   go v (p:_) =
-    error
+    Left
       $  "TypeError: path `"
-      <> show p
+      <> T.pack (show p)
       <> "` is missing in `"
-      <> show v
+      <> T.pack (show v)
       <> "`"
 
 normalize
@@ -92,26 +92,28 @@ normalize path1 ts = V.toList path1' ++ dropWhile (\v -> v == Right "") ts
   depth  = length $ takeWhile (\v -> v == Right "") ts
   path1' = V.take (V.length path1 - depth - 1) path1
 
-eval :: Context -> Expr -> Value
+eval :: Context -> Expr -> Either T.Text Value
 eval ctx = go
  where
-  go None = ""
+  go None = Right ""
   go (Ref path') =
     getAt (target ctx) (normalize (path ctx) (convertPath path'))
   go (Var path') =
     getAt (Object (variables ctx)) (normalize V.empty (convertPath path'))
-  go (binds -> Op "+" (Constant (Number n1)) (Constant (Number n2))) =
-    Number (n1 + n2)
-  go (binds -> Op "-" (Constant (Number n1)) (Constant (Number n2))) =
-    Number (n1 - n2)
-  go (binds -> Op "*" (Constant (Number n1)) (Constant (Number n2))) =
-    Number (n1 * n2)
-  go (binds -> Op "/" (Constant (Number n1)) (Constant (Number n2))) =
-    Number (n1 / n2)
-  go expr = error $ "Illegal expression: " ++ show expr
+  go (binds -> Right (Op "+" (Constant (Number n1)) (Constant (Number n2)))) =
+    Right $ Number (n1 + n2)
+  go (binds -> Right (Op "-" (Constant (Number n1)) (Constant (Number n2)))) =
+    Right $ Number (n1 - n2)
+  go (binds -> Right (Op "*" (Constant (Number n1)) (Constant (Number n2)))) =
+    Right $ Number (n1 * n2)
+  go (binds -> Right (Op "/" (Constant (Number n1)) (Constant (Number n2)))) =
+    Right $ Number (n1 / n2)
+  go expr = Left $ "Illegal expression: " <> T.pack (show expr)
 
-  binds (Op op e1 e2) = Op op (Constant (eval ctx e1)) (Constant (eval ctx e2))
-  binds _             = undefined
+  binds (Op op e1 e2) =
+    (\e1 e2 -> Op op (Constant e1) (Constant e2))
+      <$> (eval ctx e1)
+      <*> (eval ctx e2)
 
 convertPath :: T.Text -> [Either Int T.Text]
 convertPath
@@ -123,13 +125,14 @@ convertPath
     . (\t -> if T.length t > 0 && T.head t == '.' then T.tail t else t)
   where index = char '[' *> natural <* char ']'
 
-convert :: Context -> T.Text -> Value
-convert ctx t = foldResult (\_ -> String t) (eval ctx) $ parseText parser t
+convert :: Context -> T.Text -> Either T.Text Value
+convert ctx t =
+  foldResult (\_ -> Right $ String t) (eval ctx) $ parseText parser t
 
 parseText :: Parser a -> T.Text -> Result a
 parseText parser = parseByteString parser mempty . TE.encodeUtf8
 
-resolveWith :: Context -> Value -> Value
+resolveWith :: Context -> Value -> Either T.Text Value
 resolveWith = go
  where
   go ctx (Object obj)
@@ -142,19 +145,21 @@ resolveWith = go
             )
             (Object (HM.delete "_vars" obj))
     | otherwise
-    = Object $ HM.mapWithKey
+    = fmap Object $ sequence $ HM.mapWithKey
       (\key -> go (ctx { path = V.snoc (path ctx) (Right key) }))
       obj
-  go ctx (Array arr) =
-    Array $ V.imap (\i -> go (ctx { path = V.snoc (path ctx) (Left i) })) arr
+  go ctx (Array arr) = fmap Array $ sequence $ V.imap
+    (\i -> go (ctx { path = V.snoc (path ctx) (Left i) }))
+    arr
   go ctx (String t) = convert ctx t
-  go _   (Number n) = Number n
-  go _   (Bool   b) = Bool b
-  go _   Null       = Null
+  go _   (Number n) = Right $ Number n
+  go _   (Bool   b) = Right $ Bool b
+  go _   Null       = Right Null
 
--- | Interpret a JSON value
+-- | Interpret a JSON value, and unsafely apply fromRight
 resolve :: Value -> Value
-resolve value = resolveWith (Context V.empty HM.empty value) value
+resolve value =
+  (\(Right a) -> a) $ resolveWith (Context V.empty HM.empty value) value
 
 -- | AST for the current syntax is just a JSON value.
 type AST = Value
@@ -176,7 +181,7 @@ evaluate value = conf (Context V.empty HM.empty value) value
     in
       fmap (\v -> AppConfig v V.empty) $ app ctx' (obj HM.! "app")
   conf _ (Object obj) =
-    Left $ "`app` Not Found: " <> T.pack (show (Object obj))
+    Left $ "path `app` is missing in " <> T.pack (show (Object obj))
   conf _ ast = Left $ "Invalid format: " <> T.pack (show ast)
 
   app :: Context -> AST -> Either T.Text (V.Vector ComponentConfig)
@@ -184,7 +189,7 @@ evaluate value = conf (Context V.empty HM.empty value) value
   app _   ast         = Left $ "Invalid format: " <> T.pack (show ast)
 
   component :: Context -> AST -> Either T.Text ComponentConfig
-  component ctx (Object obj) | all (`HM.member` obj) ["name", "properties"] =
+  component ctx (Object obj) | all (`HM.member` obj) ["name", "properties"] = do
     let
       ctx' = maybe
         ctx
@@ -193,8 +198,11 @@ evaluate value = conf (Context V.empty HM.empty value) value
           }
         )
         (HM.lookup "_vars" obj)
-      String name = resolveWith ctx' (obj HM.! "name")
-      props       = resolveWith ctx' (obj HM.! "properties")
-    in
-      Right $ ComponentConfig name props HM.empty
+
+    nameValue <- resolveWith ctx' (obj HM.! "name")
+    case nameValue of
+      String name -> do
+        props <- resolveWith ctx' (obj HM.! "properties")
+        Right $ ComponentConfig name props HM.empty
+      _ -> Left $ "Invalid format: " <> T.pack (show nameValue)
   component _ ast = Left $ "Invalid format: " <> T.pack (show ast)
