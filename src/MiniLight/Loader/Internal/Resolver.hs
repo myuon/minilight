@@ -3,6 +3,7 @@
 module MiniLight.Loader.Internal.Resolver where
 
 import Control.Applicative
+import Control.Monad
 import Data.Aeson hiding (Result)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
@@ -100,20 +101,34 @@ eval ctx = go
     getAt (target ctx) (normalize (path ctx) (convertPath path'))
   go (Var path') =
     getAt (Object (variables ctx)) (normalize V.empty (convertPath path'))
-  go (binds -> Right (Op "+" (Constant (Number n1)) (Constant (Number n2)))) =
-    Right $ Number (n1 + n2)
-  go (binds -> Right (Op "-" (Constant (Number n1)) (Constant (Number n2)))) =
-    Right $ Number (n1 - n2)
-  go (binds -> Right (Op "*" (Constant (Number n1)) (Constant (Number n2)))) =
-    Right $ Number (n1 * n2)
-  go (binds -> Right (Op "/" (Constant (Number n1)) (Constant (Number n2)))) =
-    Right $ Number (n1 / n2)
+  go (Op "+" e1 e2) =
+    fmap Number
+      $   join
+      $   (\x y -> (+) <$> asNumber x <*> asNumber y)
+      <$> eval ctx e1
+      <*> eval ctx e2
+  go (Op "-" e1 e2) =
+    fmap Number
+      $   join
+      $   (\x y -> (-) <$> asNumber x <*> asNumber y)
+      <$> eval ctx e1
+      <*> eval ctx e2
+  go (Op "*" e1 e2) =
+    fmap Number
+      $   join
+      $   (\x y -> (*) <$> asNumber x <*> asNumber y)
+      <$> eval ctx e1
+      <*> eval ctx e2
+  go (Op "/" e1 e2) =
+    fmap Number
+      $   join
+      $   (\x y -> (/) <$> asNumber x <*> asNumber y)
+      <$> eval ctx e1
+      <*> eval ctx e2
   go expr = Left $ "Illegal expression: " <> T.pack (show expr)
 
-  binds (Op op e1 e2) =
-    (\e1 e2 -> Op op (Constant e1) (Constant e2))
-      <$> (eval ctx e1)
-      <*> (eval ctx e2)
+  asNumber (Number x) = Right x
+  asNumber x          = Left $ "Not a number: " <> T.pack (show x)
 
 convertPath :: T.Text -> [Either Int T.Text]
 convertPath
