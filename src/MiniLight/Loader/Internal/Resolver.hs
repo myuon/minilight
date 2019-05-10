@@ -68,8 +68,7 @@ parser = try reference <|> try variable <|> try (char '$' *> braces expr)
 
 data Context = Context {
   path :: V.Vector (Either Int T.Text),
-  variables :: Object,
-  target :: Value
+  variables :: Object
 }
 
 getAt :: Value -> [Either Int T.Text] -> Either T.Text Value
@@ -93,41 +92,28 @@ normalize path1 ts = V.toList path1' ++ dropWhile (\v -> v == Right "") ts
   depth  = length $ takeWhile (\v -> v == Right "") ts
   path1' = V.take (V.length path1 - depth - 1) path1
 
-eval :: Context -> Expr -> Either T.Text Value
-eval ctx = go
+eval :: Context -> Value -> Expr -> Either T.Text Value
+eval ctx target = go
  where
   go None = Right ""
   go (Ref path') =
     either (Left . (("Error in `${ref:" <> path' <> "}`\n") <>)) Right
-      $ getAt (target ctx) (normalize (path ctx) (convertPath path'))
+      $ getAt target (normalize (path ctx) (convertPath path'))
   go (Var path') =
     either (Left . (("Error in `${var:" <> path' <> "}`\n") <>)) Right
       $ getAt (Object (variables ctx)) (normalize V.empty (convertPath path'))
-  go (Op "+" e1 e2) =
+  go (Op "+" e1 e2) = runOp (+) e1 e2
+  go (Op "-" e1 e2) = runOp (-) e1 e2
+  go (Op "*" e1 e2) = runOp (*) e1 e2
+  go (Op "/" e1 e2) = runOp (/) e1 e2
+  go expr           = Left $ "Illegal expression: " <> T.pack (show expr)
+
+  runOp op e1 e2 =
     fmap Number
       $   join
-      $   (\x y -> (+) <$> asNumber x <*> asNumber y)
-      <$> eval ctx e1
-      <*> eval ctx e2
-  go (Op "-" e1 e2) =
-    fmap Number
-      $   join
-      $   (\x y -> (-) <$> asNumber x <*> asNumber y)
-      <$> eval ctx e1
-      <*> eval ctx e2
-  go (Op "*" e1 e2) =
-    fmap Number
-      $   join
-      $   (\x y -> (*) <$> asNumber x <*> asNumber y)
-      <$> eval ctx e1
-      <*> eval ctx e2
-  go (Op "/" e1 e2) =
-    fmap Number
-      $   join
-      $   (\x y -> (/) <$> asNumber x <*> asNumber y)
-      <$> eval ctx e1
-      <*> eval ctx e2
-  go expr = Left $ "Illegal expression: " <> T.pack (show expr)
+      $   (\x y -> op <$> asNumber x <*> asNumber y)
+      <$> go e1
+      <*> go e2
 
   asNumber (Number x) = Right x
   asNumber x          = Left $ "Not a number: " <> T.pack (show x)
@@ -142,15 +128,15 @@ convertPath
     . (\t -> if T.length t > 0 && T.head t == '.' then T.tail t else t)
   where index = char '[' *> natural <* char ']'
 
-convert :: Context -> T.Text -> Either T.Text Value
-convert ctx t =
-  foldResult (\_ -> Right $ String t) (eval ctx) $ parseText parser t
+convert :: Context -> Value -> T.Text -> Either T.Text Value
+convert ctx target t =
+  foldResult (\_ -> Right $ String t) (eval ctx target) $ parseText parser t
 
 parseText :: Parser a -> T.Text -> Result a
 parseText parser = parseByteString parser mempty . TE.encodeUtf8
 
 resolveWith :: Context -> Value -> Either T.Text Value
-resolveWith = go
+resolveWith ctx target = go ctx target
  where
   go ctx (Object obj)
     | "_vars" `HM.member` obj
@@ -168,22 +154,21 @@ resolveWith = go
   go ctx (Array arr) = fmap Array $ sequence $ V.imap
     (\i -> go (ctx { path = V.snoc (path ctx) (Left i) }))
     arr
-  go ctx (String t) = convert ctx t
+  go ctx (String t) = convert ctx target t
   go _   (Number n) = Right $ Number n
   go _   (Bool   b) = Right $ Bool b
   go _   Null       = Right Null
 
 -- | Interpret a JSON value, and unsafely apply fromRight
 resolve :: Value -> Value
-resolve value =
-  (\(Right a) -> a) $ resolveWith (Context V.empty HM.empty value) value
+resolve = (\(Right a) -> a) . resolveWith (Context V.empty HM.empty)
 
 -- | AST for the current syntax is just a JSON value.
 type AST = Value
 
 -- | Create 'AppConfig' value from AST
 evaluate :: AST -> Either T.Text AppConfig
-evaluate value = conf (Context V.empty HM.empty value) value
+evaluate = conf (Context V.empty HM.empty)
  where
   conf :: Context -> AST -> Either T.Text AppConfig
   conf ctx (Object obj) | "app" `HM.member` obj =
