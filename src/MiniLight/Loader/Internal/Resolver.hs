@@ -152,11 +152,14 @@ resolveWith = go
   go _   (Bool   b) = Bool b
   go _   Null       = Null
 
+-- | Interpret a JSON value
 resolve :: Value -> Value
 resolve value = resolveWith (Context V.empty HM.empty value) value
 
+-- | AST for the current syntax is just a JSON value.
 type AST = Value
 
+-- | Create 'AppConfig' value from AST
 evaluate :: AST -> Either T.Text AppConfig
 evaluate value = conf (Context V.empty HM.empty value) value
  where

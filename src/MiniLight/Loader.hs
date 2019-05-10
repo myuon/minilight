@@ -49,6 +49,7 @@ module MiniLight.Loader (
   patchAppConfig,
 
   resolve,
+  evaluate,
 ) where
 
 import Control.Lens
@@ -63,12 +64,13 @@ import Data.Aeson.Patch
 import Data.Aeson.Pointer
 import Data.IORef
 import qualified Data.Registry as R
+import qualified Data.Text as T
 import qualified Data.Vector as V
 import Data.Yaml (decodeFileEither)
 import MiniLight.Light
 import MiniLight.Component
 import MiniLight.Loader.Internal.Types
-import MiniLight.Loader.Internal.Resolver (resolve)
+import MiniLight.Loader.Internal.Resolver (resolve, evaluate)
 
 -- | The environment for config loader
 data LoaderEnv = LoaderEnv {
@@ -78,16 +80,11 @@ data LoaderEnv = LoaderEnv {
 
 makeClassy_ ''LoaderEnv
 
-toEither :: Result a -> Either String a
-toEither (Error   s) = Left s
-toEither (Success a) = Right a
-
 -- | Load an config file and return the resolved @AppConfig@.
-resolveConfig :: MonadIO m => FilePath -> m (Either String AppConfig)
+resolveConfig :: MonadIO m => FilePath -> m (Either T.Text AppConfig)
 resolveConfig path =
   liftIO
-    $   (toEither . fromJSON <=< fmap resolve)
-    .   either (Left . show) Right
+    $   (evaluate <=< either (Left . T.pack . show) Right)
     <$> decodeFileEither path
 
 -- | Load an config file and set in the environment. Calling this function at once, this overrides all values in the environment.
