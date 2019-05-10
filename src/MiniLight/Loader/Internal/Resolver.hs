@@ -98,9 +98,11 @@ eval ctx = go
  where
   go None = Right ""
   go (Ref path') =
-    getAt (target ctx) (normalize (path ctx) (convertPath path'))
+    either (Left . (("Error in `${ref:" <> path' <> "}`\n") <>)) Right
+      $ getAt (target ctx) (normalize (path ctx) (convertPath path'))
   go (Var path') =
-    getAt (Object (variables ctx)) (normalize V.empty (convertPath path'))
+    either (Left . (("Error in `${var:" <> path' <> "}`\n") <>)) Right
+      $ getAt (Object (variables ctx)) (normalize V.empty (convertPath path'))
   go (Op "+" e1 e2) =
     fmap Number
       $   join
