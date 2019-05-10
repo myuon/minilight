@@ -7,8 +7,9 @@ import Data.Aeson hiding (Result)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
-import Data.Scientific (Scientific, fromFloatDigits)
+import Data.Scientific (fromFloatDigits)
 import qualified Data.Vector as V
+import MiniLight.Loader.Internal.Types
 import Text.Trifecta
 
 data Expr
@@ -24,15 +25,16 @@ data Expr
 parser :: Parser Expr
 parser = try reference <|> try variable <|> try (char '$' *> braces expr)
  where
-  expr      = chainl expr1 op1 None
-  expr1     = chainl expr2 op2 None
-  expr2     = parens expr
-    <|> try apply
-    <|> try parameter
-    <|> try reference
-    <|> try variable
-    <|> try number
-    <|> try strlit
+  expr  = chainl expr1 op1 None
+  expr1 = chainl expr2 op2 None
+  expr2 =
+    parens expr
+      <|> try apply
+      <|> try parameter
+      <|> try reference
+      <|> try variable
+      <|> try number
+      <|> try strlit
 
   -- low precedence infixl operator group
   op1       = Op "+" <$ textSymbol "+" <|> Op "-" <$ textSymbol "-"
@@ -46,13 +48,21 @@ parser = try reference <|> try variable <|> try (char '$' *> braces expr)
     braces $ text "var:" *> (fmap (Var . T.pack) (many (letter <|> oneOf ".")))
   number = fmap (Constant . Number . either fromIntegral fromFloatDigits)
                 integerOrDouble
-  strlit = fmap (Constant . String) $ stringLiteral
+  strlit    = fmap (Constant . String) $ stringLiteral
 
   parameter = char '$' *> do
     fmap (Symbol . T.pack) $ (:) <$> letter <*> many (letter <|> digit)
   apply = do
     func <- parameter
-    exps <- parens $ option [] $ fmap (filter (/= None)) $ try $ (:) <$> expr <*> expr `sepBy` (char ',')
+    exps <-
+      parens
+      $       option []
+      $       fmap (filter (/= None))
+      $       try
+      $       (:)
+      <$>     expr
+      <*>     expr
+      `sepBy` (char ',')
     return $ App func exps
 
 data Context = Context {
@@ -82,10 +92,6 @@ normalize path1 ts = V.toList path1' ++ dropWhile (\v -> v == Right "") ts
   depth  = length $ takeWhile (\v -> v == Right "") ts
   path1' = V.take (V.length path1 - depth - 1) path1
 
-pattern Arithmetic :: T.Text -> Scientific -> Scientific -> Expr
-pattern Arithmetic op n1 n2 =
-  Op op (Constant (Number n1)) (Constant (Number n2))
-
 eval :: Context -> Expr -> Value
 eval ctx = go
  where
@@ -94,14 +100,18 @@ eval ctx = go
     getAt (target ctx) (normalize (path ctx) (convertPath path'))
   go (Var path') =
     getAt (Object (variables ctx)) (normalize V.empty (convertPath path'))
-  go (binds -> Arithmetic "+" n1 n2) = Number (n1+n2)
-  go (binds -> Arithmetic "-" n1 n2) = Number (n1-n2)
-  go (binds -> Arithmetic "*" n1 n2) = Number (n1*n2)
-  go (binds -> Arithmetic "/" n1 n2) = Number (n1/n2)
+  go (binds -> Op "+" (Constant (Number n1)) (Constant (Number n2))) =
+    Number (n1 + n2)
+  go (binds -> Op "-" (Constant (Number n1)) (Constant (Number n2))) =
+    Number (n1 - n2)
+  go (binds -> Op "*" (Constant (Number n1)) (Constant (Number n2))) =
+    Number (n1 * n2)
+  go (binds -> Op "/" (Constant (Number n1)) (Constant (Number n2))) =
+    Number (n1 / n2)
   go expr = error $ "Illegal expression: " ++ show expr
 
   binds (Op op e1 e2) = Op op (Constant (eval ctx e1)) (Constant (eval ctx e2))
-  binds _ = undefined
+  binds _             = undefined
 
 convertPath :: T.Text -> [Either Int T.Text]
 convertPath
@@ -119,8 +129,8 @@ convert ctx t = foldResult (\_ -> String t) (eval ctx) $ parseText parser t
 parseText :: Parser a -> T.Text -> Result a
 parseText parser = parseByteString parser mempty . TE.encodeUtf8
 
-resolve :: Value -> Value
-resolve = \value -> go (Context V.empty HM.empty value) value
+resolveWith :: Context -> Value -> Value
+resolveWith = go
  where
   go ctx (Object obj)
     | "_vars" `HM.member` obj
@@ -138,6 +148,50 @@ resolve = \value -> go (Context V.empty HM.empty value) value
   go ctx (Array arr) =
     Array $ V.imap (\i -> go (ctx { path = V.snoc (path ctx) (Left i) })) arr
   go ctx (String t) = convert ctx t
-  go _ (Number n) = Number n
-  go _ (Bool   b) = Bool b
-  go _ Null       = Null
+  go _   (Number n) = Number n
+  go _   (Bool   b) = Bool b
+  go _   Null       = Null
+
+resolve :: Value -> Value
+resolve value = resolveWith (Context V.empty HM.empty value) value
+
+type AST = Value
+
+evaluate :: AST -> Either T.Text AppConfig
+evaluate value = conf (Context V.empty HM.empty value) value
+ where
+  conf :: Context -> AST -> Either T.Text AppConfig
+  conf ctx (Object obj) | "app" `HM.member` obj =
+    let
+      ctx' = maybe
+        ctx
+        ( \vars -> ctx
+          { variables = HM.union ((\(Object o) -> o) vars) (variables ctx)
+          }
+        )
+        (HM.lookup "_vars" obj)
+    in
+      fmap (\v -> AppConfig v V.empty) $ app ctx' (obj HM.! "app")
+  conf _ (Object obj) =
+    Left $ "`app` Not Found: " <> T.pack (show (Object obj))
+  conf _ ast = Left $ "Invalid format: " <> T.pack (show ast)
+
+  app :: Context -> AST -> Either T.Text (V.Vector ComponentConfig)
+  app ctx (Array vec) = V.mapM (component ctx) vec
+  app _   ast         = Left $ "Invalid format: " <> T.pack (show ast)
+
+  component :: Context -> AST -> Either T.Text ComponentConfig
+  component ctx (Object obj) | all (`HM.member` obj) ["name", "properties"] =
+    let
+      ctx' = maybe
+        ctx
+        ( \vars -> ctx
+          { variables = HM.union ((\(Object o) -> o) vars) (variables ctx)
+          }
+        )
+        (HM.lookup "_vars" obj)
+      String name = resolveWith ctx' (obj HM.! "name")
+      props       = resolveWith ctx' (obj HM.! "properties")
+    in
+      Right $ ComponentConfig name props HM.empty
+  component _ ast = Left $ "Invalid format: " <> T.pack (show ast)

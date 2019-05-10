@@ -2,6 +2,7 @@
 module MiniLight.Loader.Internal.Types where
 
 import Data.Aeson
+import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.UUID
@@ -13,7 +14,7 @@ import MiniLight.Light
 data ComponentConfig = ComponentConfig {
   name :: T.Text,
   properties :: Value,
-  hooks :: Maybe Object
+  hooks :: HM.HashMap String String
 } deriving (Eq, Show, Generic)
 
 instance ToJSON ComponentConfig
