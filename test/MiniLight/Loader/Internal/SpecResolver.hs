@@ -54,6 +54,10 @@ spec_parser = do
       case parseString parser mempty "${$index}" of
         Success e -> e `shouldBe` Symbol "index"
         Failure err -> expectationFailure $ show err
+    it "parses a string literal" $ do
+      case parseString parser mempty "${\"hoge\"}" of
+        Success e -> e `shouldBe` Constant (String "hoge")
+        Failure err -> expectationFailure $ show err
     it "parses a simpl function application" $ do
       case parseString parser mempty "${$func(10)}" of
         Success e -> e `shouldBe` App (Symbol "func") [Constant (Number 10)]
@@ -63,10 +67,10 @@ spec_parser = do
         Success e -> e `shouldBe` App (Symbol "func") []
         Failure err -> expectationFailure $ show err
     it "parses a function application" $ do
-      case parseString parser mempty "${$func(10,$index,${ref:hoge})}" of
-        Success e -> e `shouldBe` App (Symbol "func") [Constant (Number 10), Symbol "index", Ref "hoge"]
+      case parseString parser mempty "${$func(10,$index,${ref:hoge},\"yes\")}" of
+        Success e -> e `shouldBe` App (Symbol "func") [Constant (Number 10), Symbol "index", Ref "hoge", Constant (String "yes")]
         Failure err -> expectationFailure $ show err
-
+    
 spec_resolver :: Spec
 spec_resolver = do
   describe "Resolver" $ do
