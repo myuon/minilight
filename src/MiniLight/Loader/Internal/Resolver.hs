@@ -205,6 +205,6 @@ evaluate = conf (Context V.empty HM.empty)
     case nameValue of
       String name -> do
         props <- resolveWith ctx' (obj HM.! "properties")
-        Right $ ComponentConfig name props HM.empty
+        Right $ ComponentConfig name props Nothing
       _ -> Left $ "Invalid format: " <> T.pack (show nameValue)
   component _ ast = Left $ "Invalid format: " <> T.pack (show ast)

@@ -7,23 +7,33 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.UUID
 import qualified Data.UUID.V4
-import GHC.Generics
 import MiniLight.Component
 import MiniLight.Light
 
+newtype Hook = Hook { runHook :: Value -> MiniLight () }
+
+-- | A configuration for a component
 data ComponentConfig = ComponentConfig {
   name :: T.Text,
   properties :: Value,
-  hooks :: HM.HashMap String String
-} deriving (Eq, Show, Generic)
+  hooks :: Maybe (HM.HashMap String Hook)
+}
 
-instance ToJSON ComponentConfig
-instance FromJSON ComponentConfig
+instance ToJSON ComponentConfig where
+  toJSON v = toJSON $ HM.fromList [("name" :: String, String (name v)), ("properties", properties v)]
 
+instance FromJSON ComponentConfig where
+  parseJSON = withObject "component" $ \v -> do
+    name <- v .: "name"
+    props <- v .: "properties"
+
+    return $ ComponentConfig name props Nothing
+
+-- | A configuration for the application itself
 data AppConfig = AppConfig {
   app :: V.Vector ComponentConfig,
   uuid :: V.Vector T.Text
-} deriving (Eq, Show)
+}
 
 instance FromJSON AppConfig where
   parseJSON = withObject "app" $ \v -> do
