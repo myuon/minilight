@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
 module MiniLight.Loader.Internal.Resolver where
@@ -10,6 +11,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import Data.Scientific (fromFloatDigits)
 import qualified Data.Vector as V
+import GHC.Generics (Generic)
 import MiniLight.Loader.Internal.Types
 import Text.Trifecta
 
@@ -21,7 +23,10 @@ data Expr
   | Constant Value  -- ^ constants (string or number or null)
   | Symbol T.Text  -- ^ token symbol
   | App Expr [Expr]  -- ^ function application ($func(a,b,c))
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance ToJSON Expr
+instance FromJSON Expr
 
 parser :: Parser Expr
 parser = try reference <|> try variable <|> try (char '$' *> braces expr)
@@ -119,21 +124,21 @@ eval ctx target = go
   asNumber x          = Left $ "Not a number: " <> T.pack (show x)
 
 convertPath :: T.Text -> [Either Int T.Text]
-convertPath
-  = map
-      ( \t ->
-        foldResult (\_ -> Right t) (Left . fromIntegral) $ parseText index t
-      )
+convertPath =
+  map (\t -> either (\_ -> Right t) (Left . fromIntegral) $ parseText index t)
     . T.splitOn "."
     . (\t -> if T.length t > 0 && T.head t == '.' then T.tail t else t)
   where index = char '[' *> natural <* char ']'
 
 convert :: Context -> Value -> T.Text -> Either T.Text Value
 convert ctx target t =
-  foldResult (\_ -> Right $ String t) (eval ctx target) $ parseText parser t
+  either (\_ -> Right $ String t) (eval ctx target) $ parseText parser t
 
-parseText :: Parser a -> T.Text -> Result a
-parseText parser = parseByteString parser mempty . TE.encodeUtf8
+parseText :: Parser a -> T.Text -> Either T.Text a
+parseText parser =
+  foldResult (Left . T.pack . show) Right
+    . parseByteString parser mempty
+    . TE.encodeUtf8
 
 resolveWith :: Context -> Value -> Either T.Text Value
 resolveWith ctx target = go ctx target
@@ -202,6 +207,9 @@ parseAppConfig = conf (Context V.empty HM.empty)
     case nameValue of
       String name -> do
         props <- resolveWith ctx' (obj HM.! "properties")
-        Right $ ComponentConfig name props Nothing
+        Right $ ComponentConfig
+          name
+          props
+          (fmap (\(Object o) -> o) $ HM.lookup "hooks" obj)
       _ -> Left $ "Invalid format: " <> T.pack (show nameValue)
   component _ ast = Left $ "Invalid format: " <> T.pack (show ast)

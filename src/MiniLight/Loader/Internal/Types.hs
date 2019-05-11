@@ -10,13 +10,11 @@ import qualified Data.UUID.V4
 import MiniLight.Component
 import MiniLight.Light
 
-newtype Hook = Hook { runHook :: Value -> MiniLight () }
-
 -- | A configuration for a component
 data ComponentConfig = ComponentConfig {
   name :: T.Text,
   properties :: Value,
-  hooks :: Maybe (HM.HashMap String Hook)
+  hooks :: Maybe (HM.HashMap T.Text Value)
 }
 
 instance ToJSON ComponentConfig where
