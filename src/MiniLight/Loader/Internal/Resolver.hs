@@ -163,14 +163,11 @@ resolveWith ctx target = go ctx target
 resolve :: Value -> Value
 resolve = (\(Right a) -> a) . resolveWith (Context V.empty HM.empty)
 
--- | AST for the current syntax is just a JSON value.
-type AST = Value
-
--- | Create 'AppConfig' value from AST
-evaluate :: AST -> Either T.Text AppConfig
-evaluate = conf (Context V.empty HM.empty)
+-- | Create 'AppConfig' value from JSON value
+parseAppConfig :: Value -> Either T.Text AppConfig
+parseAppConfig = conf (Context V.empty HM.empty)
  where
-  conf :: Context -> AST -> Either T.Text AppConfig
+  conf :: Context -> Value -> Either T.Text AppConfig
   conf ctx (Object obj) | "app" `HM.member` obj =
     let
       ctx' = maybe
@@ -186,11 +183,11 @@ evaluate = conf (Context V.empty HM.empty)
     Left $ "path `app` is missing in " <> T.pack (show (Object obj))
   conf _ ast = Left $ "Invalid format: " <> T.pack (show ast)
 
-  app :: Context -> AST -> Either T.Text (V.Vector ComponentConfig)
+  app :: Context -> Value -> Either T.Text (V.Vector ComponentConfig)
   app ctx (Array vec) = V.mapM (component ctx) vec
   app _   ast         = Left $ "Invalid format: " <> T.pack (show ast)
 
-  component :: Context -> AST -> Either T.Text ComponentConfig
+  component :: Context -> Value -> Either T.Text ComponentConfig
   component ctx (Object obj) | all (`HM.member` obj) ["name", "properties"] = do
     let
       ctx' = maybe

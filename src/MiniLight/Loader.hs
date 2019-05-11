@@ -49,7 +49,7 @@ module MiniLight.Loader (
   patchAppConfig,
 
   resolve,
-  evaluate,
+  parseAppConfig,
 ) where
 
 import Control.Lens
@@ -70,7 +70,7 @@ import Data.Yaml (decodeFileEither)
 import MiniLight.Light
 import MiniLight.Component
 import MiniLight.Loader.Internal.Types
-import MiniLight.Loader.Internal.Resolver (resolve, evaluate)
+import MiniLight.Loader.Internal.Resolver (resolve, parseAppConfig)
 
 -- | The environment for config loader
 data LoaderEnv = LoaderEnv {
@@ -84,7 +84,7 @@ makeClassy_ ''LoaderEnv
 resolveConfig :: MonadIO m => FilePath -> m (Either T.Text AppConfig)
 resolveConfig path =
   liftIO
-    $   (evaluate <=< either (Left . T.pack . show) Right)
+    $   (parseAppConfig <=< either (Left . T.pack . show) Right)
     <$> decodeFileEither path
 
 -- | Load an config file and set in the environment. Calling this function at once, this overrides all values in the environment.
