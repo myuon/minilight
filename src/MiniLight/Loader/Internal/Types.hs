@@ -10,11 +10,28 @@ import qualified Data.UUID.V4
 import MiniLight.Component
 import MiniLight.Light
 
+data Hook = Hook {
+  signalName :: T.Text,
+  parameter :: Value
+}
+
+instance FromJSON Hook where
+  parseJSON = withObject "hook" $ \v ->
+    Hook <$> v .: "name" <*> v .: "parameter"
+
+toHook :: Value -> Either T.Text Hook
+toHook =
+  ( \case
+      Success a   -> Right a
+      Error   err -> Left $ T.pack $ show err
+    )
+    . fromJSON
+
 -- | A configuration for a component
 data ComponentConfig = ComponentConfig {
   name :: T.Text,
   properties :: Value,
-  hooks :: Maybe (HM.HashMap T.Text Value)
+  hooks :: Maybe (HM.HashMap T.Text Hook)
 }
 
 instance ToJSON ComponentConfig where

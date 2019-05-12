@@ -73,7 +73,8 @@ parser = try reference <|> try variable <|> try (char '$' *> braces expr)
 
 data Context = Context {
   path :: V.Vector (Either Int T.Text),
-  variables :: Object
+  variables :: Object,
+  values :: HM.HashMap T.Text Value
 }
 
 getAt :: Value -> [Either Int T.Text] -> Either T.Text Value
@@ -111,7 +112,11 @@ eval ctx target = go
   go (Op "-" e1 e2) = runOp (-) e1 e2
   go (Op "*" e1 e2) = runOp (*) e1 e2
   go (Op "/" e1 e2) = runOp (/) e1 e2
-  go expr           = Left $ "Illegal expression: " <> T.pack (show expr)
+  go (Symbol t) =
+    maybe (Left $ "Symbol not defined: `" <> t <> "`") Right
+      $ HM.lookup t
+      $ values ctx
+  go expr = Left $ "Illegal expression: " <> T.pack (show expr)
 
   runOp op e1 e2 =
     fmap Number
@@ -166,11 +171,11 @@ resolveWith ctx target = go ctx target
 
 -- | Interpret a JSON value, and unsafely apply fromRight
 resolve :: Value -> Value
-resolve = (\(Right a) -> a) . resolveWith (Context V.empty HM.empty)
+resolve = (\(Right a) -> a) . resolveWith (Context V.empty HM.empty HM.empty)
 
 -- | Create 'AppConfig' value from JSON value
 parseAppConfig :: Value -> Either T.Text AppConfig
-parseAppConfig = conf (Context V.empty HM.empty)
+parseAppConfig = conf (Context V.empty HM.empty HM.empty)
  where
   conf :: Context -> Value -> Either T.Text AppConfig
   conf ctx (Object obj) | "app" `HM.member` obj =
@@ -207,9 +212,9 @@ parseAppConfig = conf (Context V.empty HM.empty)
     case nameValue of
       String name -> do
         props <- resolveWith ctx' (obj HM.! "properties")
-        Right $ ComponentConfig
-          name
-          props
-          (fmap (\(Object o) -> o) $ HM.lookup "hooks" obj)
+        hooks <-
+          sequence
+            $ (fmap (\(Object o) -> mapM toHook o) $ HM.lookup "hooks" obj)
+        Right $ ComponentConfig name props hooks
       _ -> Left $ "Invalid format: " <> T.pack (show nameValue)
   component _ ast = Left $ "Invalid format: " <> T.pack (show ast)
