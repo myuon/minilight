@@ -74,7 +74,7 @@ instance ComponentUnit MessageEngine where
 
   useCache c1 c2 = page c1 == page c2 && textCounter c1 == textCounter c2
 
-  onSignal ev c = view uidL >>= \u -> go (ev,u) c
+  onSignal ev c = view _uid >>= \u -> go (ev,u) c
     where
       go (uncurry asSignal -> Just NextPage) = execStateT $ do
         fin <- use _finished

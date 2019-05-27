@@ -1,5 +1,6 @@
 module MiniLight.Component (
   HasComponentEnv(..),
+  ComponentEnv(..),
   emit,
 
   ComponentUnit(..),
@@ -22,12 +23,13 @@ import MiniLight.Event
 import MiniLight.Figure
 import qualified SDL
 
-class HasComponentEnv env where
-  -- | Lens to the unique id, which is provided for each component.
-  uidL :: Lens' env T.Text
+-- | Environmental information, which are passed for each component
+data ComponentEnv = ComponentEnv {
+  uid :: T.Text,  -- ^ The unique id
+  callbacks :: Maybe Object  -- ^ The hooks
+}
 
-  -- | Get the hooks
-  hooksL :: Lens' env Object
+makeClassy_ ''ComponentEnv
 
 -- | Emit a signal, which will be catched at the next frame.
 emit
@@ -35,12 +37,12 @@ emit
   => et
   -> LightT env m ()
 emit et = do
-  uid <- view uidL
+  uid <- view _uid
   ref <- view _signalQueue
   liftIO $ modifyIORef' ref $ (signal uid et :)
 
-  hs <- view hooksL
-  case HM.lookup (getEventType et) hs of
+  hs <- view _callbacks
+  case HM.lookup (getEventType et) =<< hs of
     Just ss -> liftIO $ modifyIORef' ref (GlobalSignal (getEventType et) ss :)
     Nothing -> return ()
 
@@ -79,7 +81,7 @@ class ComponentUnit c where
 
 -- | A wrapper for 'ComponentUnit' instances.
 data Component = forall c. ComponentUnit c => Component {
-  uid :: T.Text,
+  uidOf :: T.Text,
   component :: c,
   prev :: c,
   cache :: IORef [Figure]
@@ -94,7 +96,7 @@ newComponent
 newComponent uid c = do
   figs <- figures c
   ref  <- liftIO $ newIORef figs
-  return $ Component {uid = uid, component = c, prev = c, cache = ref}
+  return $ Component {uidOf = uid, component = c, prev = c, cache = ref}
 
 -- | Get the size of a component.
 getComponentSize

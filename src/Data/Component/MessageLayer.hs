@@ -68,7 +68,7 @@ instance ComponentUnit MessageLayer where
   onSignal
     = Basic.wrapSignal (CLayer.basic . CLayer.config . layer)
     $ CME.wrapSignal _messageEngine
-    $ \ev c -> view uidL >>= \u -> go (ev,u) c
+    $ \ev c -> view _uid >>= \u -> go (ev,u) c
       where
         go (uncurry asSignal -> Just (Basic.MouseReleased _)) = execStateT $ do
           lift $ emit CME.NextPage

@@ -40,7 +40,7 @@ instance ComponentUnit Selection where
   useCache c1 c2 = hover c1 == hover c2
 
   onSignal = Basic.wrapSignal (basic . conf) $ \ev sel -> flip execStateT sel $ do
-    uid <- view uidL
+    uid <- view _uid
 
     case ev `asSignal` uid of
       Just (Basic.MouseOver pos) | (pos ^. _y) `div` 30 <= V.length (labels (conf sel)) - 1 -> do

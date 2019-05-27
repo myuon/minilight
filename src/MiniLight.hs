@@ -30,7 +30,6 @@ import Data.Maybe
 import Data.IORef
 import qualified Data.Registry as R
 import qualified Data.Vector as V
-import qualified Data.Text as T
 import Graphics.Text.TrueType
 import MiniLight.Component
 import MiniLight.Event
@@ -104,19 +103,24 @@ instance HasLoaderEnv LoopState where
   loaderEnv = _loader . loaderEnv
 
 
-instance HasLightEnv env' => HasLightEnv (env, env') where
-  lightEnv = _2 . lightEnv
+data ComponentState a = ComponentState {
+  stateL :: a,
+  componentEnvL :: ComponentEnv
+}
 
-instance HasLoopEnv env' => HasLoopEnv (env, env') where
-  loopEnv = _2 . loopEnv
+makeLensesWith classyRules_ ''ComponentState
 
-instance HasLoaderEnv env' => HasLoaderEnv (env, env') where
-  loaderEnv = _2 . loaderEnv
+instance HasLightEnv env => HasLightEnv (ComponentState env) where
+  lightEnv = _stateL . lightEnv
 
+instance HasLoopEnv env => HasLoopEnv (ComponentState env) where
+  loopEnv = _stateL . loopEnv
 
-instance HasComponentEnv (T.Text, env) where
-  uidL = _1
+instance HasLoaderEnv env => HasLoaderEnv (ComponentState env) where
+  loaderEnv = _stateL . loaderEnv
 
+instance HasComponentEnv (ComponentState env) where
+  componentEnv = _componentEnvL
 
 -- | Same as 'runMainloop' but fixing the type.
 runMiniloop :: LoopConfig -> s -> (s -> MiniLoop s) -> MiniLight ()
@@ -181,7 +185,11 @@ runMainloop conv conf initial userloop = do
     R.modifyV_ (loader ^. _registry) $ return . propagate
 
     R.modifyV_ (loader ^. _registry) $ \comp ->
-      envLightT (\env -> (getUID comp, conv env loop loader)) $ update comp
+      envLightT
+          ( \env -> ComponentState (conv env loop loader)
+                                   (ComponentEnv (getUID comp) Nothing)
+          )
+        $ update comp
 
     s' <- envLightT (\env -> conv env loop loader) $ userloop s
 
@@ -207,9 +215,16 @@ runMainloop conv conf initial userloop = do
       events <- liftIO $ modifyMVar evref (\a -> return ([], a))
 
       R.modifyV_ (loader ^. _registry) $ \comp -> do
-        foldlM (\comp ev -> envLightT ((,) (getUID comp)) $ onSignal ev comp)
-               comp
-               events
+        foldlM
+          ( \comp ev ->
+            envLightT
+                ( \env ->
+                  ComponentState env (ComponentEnv (getUID comp) Nothing)
+                )
+              $ onSignal ev comp
+          )
+          comp
+          events
 
       forM_
           ( catMaybes $ map
