@@ -186,8 +186,9 @@ runMainloop conv conf initial userloop = do
 
     R.modifyV_ (loader ^. _registry) $ \comp ->
       envLightT
-          ( \env -> ComponentState (conv env loop loader)
-                                   (ComponentEnv (getUID comp) Nothing)
+          ( \env -> ComponentState
+            (conv env loop loader)
+            (ComponentEnv (getUID comp) (getHooks comp))
           )
         $ update comp
 

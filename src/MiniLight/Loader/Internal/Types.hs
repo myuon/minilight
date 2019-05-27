@@ -7,13 +7,16 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.UUID
 import qualified Data.UUID.V4
+import GHC.Generics (Generic)
 import MiniLight.Component
 import MiniLight.Light
 
 data Hook = Hook {
   signalName :: T.Text,
   parameter :: Value
-}
+} deriving Generic
+
+instance ToJSON Hook
 
 instance FromJSON Hook where
   parseJSON = withObject "hook" $ \v ->

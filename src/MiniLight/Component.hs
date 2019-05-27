@@ -8,6 +8,8 @@ module MiniLight.Component (
   newComponent,
   getComponentSize,
   getUID,
+  getHooks,
+  setHooks,
   propagate,
 ) where
 
@@ -84,7 +86,8 @@ data Component = forall c. ComponentUnit c => Component {
   uidOf :: T.Text,
   component :: c,
   prev :: c,
-  cache :: IORef [Figure]
+  cache :: IORef [Figure],
+  callbackObject :: Maybe Object
 }
 
 -- | Create a new component.
@@ -96,7 +99,13 @@ newComponent
 newComponent uid c = do
   figs <- figures c
   ref  <- liftIO $ newIORef figs
-  return $ Component {uidOf = uid, component = c, prev = c, cache = ref}
+  return $ Component
+    { uidOf          = uid
+    , component      = c
+    , prev           = c
+    , cache          = ref
+    , callbackObject = Nothing
+    }
 
 -- | Get the size of a component.
 getComponentSize
@@ -109,20 +118,28 @@ getComponentSize comp = do
 
 -- | Get its unique id.
 getUID :: Component -> T.Text
-getUID (Component uid _ _ _) = uid
+getUID (Component uid _ _ _ _) = uid
+
+-- | Get the hooks
+getHooks :: Component -> Maybe Object
+getHooks (Component _ _ _ _ h) = h
+
+-- | Get the hooks
+setHooks :: Component -> Maybe Object -> Component
+setHooks (Component uid comp prev cache _) h = Component uid comp prev cache h
 
 -- | Clear the previous model cache and reflect the current model.
 propagate :: Component -> Component
-propagate (Component uid comp _ cache) = Component uid comp comp cache
+propagate (Component uid comp _ cache h) = Component uid comp comp cache h
 
 instance ComponentUnit Component where
-  update (Component uid comp prev cache) = do
+  update (Component uid comp prev cache h) = do
     comp' <- update comp
-    return $ Component uid comp' prev cache
+    return $ Component uid comp' prev cache h
 
-  figures (Component _ comp _ _) = figures comp
+  figures (Component _ comp _ _ _) = figures comp
 
-  draw (Component _ comp prev ref) = do
+  draw (Component _ comp prev ref _) = do
     if useCache prev comp
       then liftMiniLight . renders =<< liftIO (readIORef ref)
       else do
@@ -133,4 +150,4 @@ instance ComponentUnit Component where
         liftMiniLight $ renders figs
         liftIO $ writeIORef ref figs
 
-  onSignal ev (Component uid comp prev cache) = fmap (\comp' -> Component uid comp' prev cache) $ onSignal ev comp
+  onSignal ev (Component uid comp prev cache h) = fmap (\comp' -> Component uid comp' prev cache h) $ onSignal ev comp

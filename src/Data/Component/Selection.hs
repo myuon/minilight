@@ -45,6 +45,9 @@ instance ComponentUnit Selection where
     case ev `asSignal` uid of
       Just (Basic.MouseOver pos) | (pos ^. _y) `div` 30 <= V.length (labels (conf sel)) - 1 -> do
         hoverL .= Just ((pos ^. _y) `div` 30)
+      Just (Basic.MouseReleased pos) | (pos ^. _y) `div` 30 <= V.length (labels (conf sel)) - 1 -> do
+        liftIO $ print "selected"
+        lift $ emit $ Selected ((pos ^. _y) `div` 30)
       _ -> return ()
 
   -- OMG

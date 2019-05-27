@@ -112,7 +112,9 @@ loadAppConfig path mapper = fmap (maybe () id) $ runMaybeT $ do
         return Nothing
       Right component -> do
         reg <- view _registry
-        R.register reg uid component
+        R.register reg
+                   uid
+                   (setHooks component (fmap (fmap toJSON) $ hooks conf))
 
         Caster.info
           $  "Component loaded: {name: "
