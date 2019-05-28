@@ -104,7 +104,7 @@ loadAppConfig path mapper = fmap (maybe () id) $ runMaybeT $ do
 
   confs <- lift $ fmap (V.mapMaybe id) $ V.forM (app conf) $ \conf -> do
     uid    <- newUID
-    result <- liftMiniLight $ mapper (name conf) uid (properties conf)
+    result <- liftMiniLight $ createComponentBy mapper (Just uid) conf
 
     case result of
       Left e -> do
@@ -112,9 +112,7 @@ loadAppConfig path mapper = fmap (maybe () id) $ runMaybeT $ do
         return Nothing
       Right component -> do
         reg <- view _registry
-        R.register reg
-                   uid
-                   (setHooks component (fmap (fmap toJSON) $ hooks conf))
+        R.register reg uid component
 
         Caster.info
           $  "Component loaded: {name: "

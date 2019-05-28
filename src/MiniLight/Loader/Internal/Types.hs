@@ -76,5 +76,7 @@ createComponentBy
   -> Maybe T.Text
   -> ComponentConfig
   -> MiniLight (Either String Component)
-createComponentBy resolver uid config =
-  maybe newUID return uid >>= \u -> resolver (name config) u (properties config)
+createComponentBy resolver uid config = do
+  uuid   <- maybe newUID return uid
+  result <- resolver (name config) uuid (properties config)
+  return $ fmap (\c -> setHooks c (fmap (fmap toJSON) $ hooks config)) result

@@ -219,8 +219,9 @@ runMainloop conv conf initial userloop = do
         foldlM
           ( \comp ev ->
             envLightT
-                ( \env ->
-                  ComponentState env (ComponentEnv (getUID comp) Nothing)
+                ( \env -> ComponentState
+                  env
+                  (ComponentEnv (getUID comp) (getHooks comp))
                 )
               $ onSignal ev comp
           )
