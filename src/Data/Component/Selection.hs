@@ -46,8 +46,7 @@ instance ComponentUnit Selection where
       Just (Basic.MouseOver pos) | (pos ^. _y) `div` 30 <= V.length (labels (conf sel)) - 1 -> do
         hoverL .= Just ((pos ^. _y) `div` 30)
       Just (Basic.MouseReleased pos) | (pos ^. _y) `div` 30 <= V.length (labels (conf sel)) - 1 -> do
-        liftIO $ print "selected"
-        lift $ emit $ Selected ((pos ^. _y) `div` 30)
+        lift $ emit $ Select ((pos ^. _y) `div` 30)
       _ -> return ()
 
   -- OMG
@@ -69,11 +68,11 @@ instance FromJSON Config where
       <*> v .: "image"
 
 data SelectionEvent
-  = Selected Int
+  = Select Int
   deriving (Typeable)
 
 instance EventType SelectionEvent where
-  getEventType (Selected _) = "selected"
+  getEventType (Select _) = "select"
 
 new :: Config -> MiniLight Selection
 new conf = do
