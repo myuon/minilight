@@ -1,4 +1,7 @@
+{-# LANGUAGE DeriveGeneric #-}
 module MiniLight.Component (
+  Hook(..),
+  HookMap,
   HasComponentEnv(..),
   ComponentEnv(..),
   emit,
@@ -20,15 +23,29 @@ import Data.Aeson
 import qualified Data.HashMap.Strict as HM
 import Data.IORef
 import qualified Data.Text as T
+import GHC.Generics (Generic)
 import MiniLight.Light
 import MiniLight.Event
 import MiniLight.Figure
 import qualified SDL
 
--- | Environmental information, which are passed for each component
+data Hook = Hook {
+  signalName :: T.Text,
+  parameter :: Value
+} deriving (Show, Generic)
+
+instance ToJSON Hook
+
+instance FromJSON Hook where
+  parseJSON = withObject "hook" $ \v ->
+    Hook <$> v .: "name" <*> v .: "parameter"
+
+type HookMap = HM.HashMap T.Text Hook
+
+    -- | Environmental information, which are passed for each component
 data ComponentEnv = ComponentEnv {
   uid :: T.Text,  -- ^ The unique id
-  callbacks :: Maybe Object  -- ^ The hooks
+  callbacks :: Maybe HookMap  -- ^ The hooks
 }
 
 makeClassy_ ''ComponentEnv
@@ -45,7 +62,8 @@ emit et = do
 
   hs <- view _callbacks
   case HM.lookup (getEventType et) =<< hs of
-    Just ss -> liftIO $ modifyIORef' ref (GlobalSignal (getEventType et) ss :)
+    Just hook -> liftIO
+      $ modifyIORef' ref (GlobalSignal (signalName hook) (parameter hook) :)
     Nothing -> return ()
 
 -- | CompoonentUnit typeclass provides a way to define a new component.
@@ -87,7 +105,7 @@ data Component = forall c. ComponentUnit c => Component {
   component :: c,
   prev :: c,
   cache :: IORef [Figure],
-  callbackObject :: Maybe Object
+  callbackObject :: Maybe HookMap
 }
 
 -- | Create a new component.
@@ -121,11 +139,11 @@ getUID :: Component -> T.Text
 getUID (Component uid _ _ _ _) = uid
 
 -- | Get the hooks
-getHooks :: Component -> Maybe Object
+getHooks :: Component -> Maybe HookMap
 getHooks (Component _ _ _ _ h) = h
 
 -- | Get the hooks
-setHooks :: Component -> Maybe Object -> Component
+setHooks :: Component -> Maybe HookMap -> Component
 setHooks (Component uid comp prev cache _) h = Component uid comp prev cache h
 
 -- | Clear the previous model cache and reflect the current model.

@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
 module MiniLight.Loader.Internal.Types where
 
 import Data.Aeson
@@ -7,20 +6,8 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.UUID
 import qualified Data.UUID.V4
-import GHC.Generics (Generic)
 import MiniLight.Component
 import MiniLight.Light
-
-data Hook = Hook {
-  signalName :: T.Text,
-  parameter :: Value
-} deriving Generic
-
-instance ToJSON Hook
-
-instance FromJSON Hook where
-  parseJSON = withObject "hook" $ \v ->
-    Hook <$> v .: "name" <*> v .: "parameter"
 
 toHook :: Value -> Either T.Text Hook
 toHook =
@@ -79,4 +66,4 @@ createComponentBy
 createComponentBy resolver uid config = do
   uuid   <- maybe newUID return uid
   result <- resolver (name config) uuid (properties config)
-  return $ fmap (\c -> setHooks c (fmap (fmap toJSON) $ hooks config)) result
+  return $ fmap (\c -> setHooks c (hooks config)) result

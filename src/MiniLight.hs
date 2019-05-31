@@ -201,17 +201,6 @@ runMainloop conv conf initial userloop = do
     keys   <- SDL.getKeyboardState
 
     envLightT (\env -> conv env loop loader) $ do
-      evref   <- view _events
-      sigref  <- view _signalQueue
-      signals <- liftIO $ readIORef sigref
-      liftIO
-        $ modifyMVar_ evref
-        $ return
-        . (map RawEvent events ++)
-        . (signals ++)
-      liftIO $ writeIORef sigref []
-
-    envLightT (\env -> conv env loop loader) $ do
       evref  <- view _events
       events <- liftIO $ modifyMVar evref (\a -> return ([], a))
 
@@ -239,6 +228,17 @@ runMainloop conv conf initial userloop = do
         $ \ev -> patchAppConfig
             (fromJust $ appConfigFile conf)
             (componentResolver conf)
+
+    envLightT (\env -> conv env loop loader) $ do
+      evref   <- view _events
+      sigref  <- view _signalQueue
+      signals <- liftIO $ readIORef sigref
+      liftIO
+        $ modifyMVar_ evref
+        $ return
+        . (map RawEvent events ++)
+        . (signals ++)
+      liftIO $ writeIORef sigref []
 
     let loop' =
           loop
