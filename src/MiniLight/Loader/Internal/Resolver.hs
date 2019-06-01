@@ -201,7 +201,7 @@ parseAppConfig = conf (Context V.empty HM.empty HM.empty)
   app _   ast         = Left $ "Invalid format: " <> T.pack (show ast)
 
   component :: Context -> Value -> Either T.Text ComponentConfig
-  component ctx (Object obj) | all (`HM.member` obj) ["name", "properties"] = do
+  component ctx (Object obj) | all (`HM.member` obj) ["type", "properties"] = do
     let
       ctx' = maybe
         ctx
@@ -211,7 +211,7 @@ parseAppConfig = conf (Context V.empty HM.empty HM.empty)
         )
         (HM.lookup "_vars" obj)
 
-    nameValue <- resolveWith ctx' (obj HM.! "name")
+    nameValue <- resolveWith ctx' (obj HM.! "type")
     case nameValue of
       String name -> do
         props <- resolveWith ctx' (obj HM.! "properties")

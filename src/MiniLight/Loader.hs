@@ -81,7 +81,7 @@ createComponentBy
   -> MiniLight (Either String Component)
 createComponentBy resolver uid config = do
   uuid   <- maybe newUID return uid
-  result <- resolver (name config) uuid (properties config)
+  result <- resolver (componentType config) uuid (properties config)
   return $ fmap
     ( \c -> setHooks
       c
@@ -138,8 +138,8 @@ loadAppConfig path mapper = fmap (maybe () id) $ runMaybeT $ do
         R.register reg uid component
 
         Caster.info
-          $  "Component loaded: {name: "
-          <> show (name conf)
+          $  "Component loaded: {type: "
+          <> show (componentType conf)
           <> ", uid: "
           <> show uid
           <> "}"
@@ -215,8 +215,8 @@ patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
 
     lift
       $  Caster.info
-      $  "Component registered: {name: "
-      <> show (name compConf)
+      $  "Component registered: {type: "
+      <> show (componentType compConf)
       <> ", uid: "
       <> show (getUID component)
       <> "}"
@@ -270,7 +270,7 @@ patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
     lift
       $  Caster.info
       $  "Component replaced: {name: "
-      <> show (name compConf)
+      <> show (componentType compConf)
       <> ", uid: "
       <> show (getUID component)
       <> "}"
