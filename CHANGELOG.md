@@ -1,5 +1,12 @@
 # Revision history for minilight
 
+## 0.4 -- 2019-06-01
+
+* Features:
+    * Hooks feature in Component Loader
+    * Improve MessageEngine component
+    * Improve Loader functions
+
 ## 0.3 -- 2019-05-05
 
 * New features:
