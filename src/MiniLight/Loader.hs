@@ -40,6 +40,7 @@ In each field, you can specify an expression defined in the loader.
 -}
 module MiniLight.Loader (
   module MiniLight.Loader.Internal.Types,
+  createComponentBy,
 
   LoaderEnv (..),
   HasLoaderEnv (..),
@@ -70,7 +71,29 @@ import Data.Yaml (decodeFileEither)
 import MiniLight.Light
 import MiniLight.Component
 import MiniLight.Loader.Internal.Types
-import MiniLight.Loader.Internal.Resolver (resolve, parseAppConfig)
+import MiniLight.Loader.Internal.Resolver (resolve, resolveWith, parseAppConfig, emptyContext, Context(..))
+
+-- | Create a component with given resolver.
+createComponentBy
+  :: Resolver
+  -> Maybe T.Text
+  -> ComponentConfig
+  -> MiniLight (Either String Component)
+createComponentBy resolver uid config = do
+  uuid   <- maybe newUID return uid
+  result <- resolver (name config) uuid (properties config)
+  return $ fmap
+    ( \c -> setHooks
+      c
+      ( fmap
+          ( fmap $ \hk -> (,) (signalName hk) $ \evprops ->
+            (\(Right r) -> r)
+              $ resolveWith (emptyContext { values = evprops }) (parameter hk)
+          )
+      $ hooks config
+      )
+    )
+    result
 
 -- | The environment for config loader
 data LoaderEnv = LoaderEnv {

@@ -4,6 +4,7 @@ import Control.Lens
 import Control.Monad.State
 import Data.Aeson hiding ((.=))
 import qualified Data.Config.Font as Font
+import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
 import Data.Typeable (Typeable)
 import qualified Data.Vector as V
@@ -73,6 +74,8 @@ data SelectionEvent
 
 instance EventType SelectionEvent where
   getEventType (Select _) = "select"
+
+  getEventProperties (Select n) = HM.fromList [("index", Number $ fromIntegral n)]
 
 new :: Config -> MiniLight Selection
 new conf = do

@@ -77,6 +77,9 @@ data Context = Context {
   values :: HM.HashMap T.Text Value
 }
 
+emptyContext :: Context
+emptyContext = Context V.empty HM.empty HM.empty
+
 getAt :: Value -> [Either Int T.Text] -> Either T.Text Value
 getAt = go
  where
@@ -171,7 +174,7 @@ resolveWith ctx target = go ctx target
 
 -- | Interpret a JSON value, and unsafely apply fromRight
 resolve :: Value -> Value
-resolve = (\(Right a) -> a) . resolveWith (Context V.empty HM.empty HM.empty)
+resolve = (\(Right a) -> a) . resolveWith emptyContext
 
 -- | Create 'AppConfig' value from JSON value
 parseAppConfig :: Value -> Either T.Text AppConfig

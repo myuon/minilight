@@ -12,6 +12,7 @@ module MiniLight.Event (
 
 import qualified SDL
 import Data.Aeson
+import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
 import Data.Type.Equality
 import Type.Reflection
@@ -22,6 +23,9 @@ class Typeable e => EventType e where
   getEventType :: e -> T.Text
   default getEventType :: Show e => e -> T.Text
   getEventType = T.pack . show
+
+  getEventProperties :: e -> Object
+  getEventProperties _ = HM.empty
 
 -- | This type is same as 'Dynamic' from @Data.Dynamic@, but it requires 'EventType' contraint.
 data Dynamic where

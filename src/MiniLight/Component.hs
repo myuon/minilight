@@ -1,6 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
 module MiniLight.Component (
-  Hook(..),
   HookMap,
   HasComponentEnv(..),
   ComponentEnv(..),
@@ -23,26 +21,14 @@ import Data.Aeson
 import qualified Data.HashMap.Strict as HM
 import Data.IORef
 import qualified Data.Text as T
-import GHC.Generics (Generic)
 import MiniLight.Light
 import MiniLight.Event
 import MiniLight.Figure
 import qualified SDL
 
-data Hook = Hook {
-  signalName :: T.Text,
-  parameter :: Value
-} deriving (Show, Generic)
+type HookMap = HM.HashMap T.Text (T.Text, Object -> Value)
 
-instance ToJSON Hook
-
-instance FromJSON Hook where
-  parseJSON = withObject "hook" $ \v ->
-    Hook <$> v .: "name" <*> v .: "parameter"
-
-type HookMap = HM.HashMap T.Text Hook
-
-    -- | Environmental information, which are passed for each component
+-- | Environmental information, which are passed for each component
 data ComponentEnv = ComponentEnv {
   uid :: T.Text,  -- ^ The unique id
   callbacks :: Maybe HookMap  -- ^ The hooks
@@ -62,8 +48,8 @@ emit et = do
 
   hs <- view _callbacks
   case HM.lookup (getEventType et) =<< hs of
-    Just hook -> liftIO
-      $ modifyIORef' ref (GlobalSignal (signalName hook) (parameter hook) :)
+    Just (name, param) -> liftIO
+      $ modifyIORef' ref (GlobalSignal name (param $ getEventProperties et) :)
     Nothing -> return ()
 
 -- | CompoonentUnit typeclass provides a way to define a new component.
