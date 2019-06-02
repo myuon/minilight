@@ -34,8 +34,8 @@ instance ComponentUnit Selection where
     base <- figures (layer comp)
     highlight <- liftMiniLight $ rectangleFilled (Vect.V4 240 240 240 40) $ _y .~ 30 $ Basic.size (basic (conf comp))
 
-    return $ base
-      ++ map (translate (Basic.position $ basic $ conf comp)) (translate (Vect.V2 0 (maybe 0 id (hover comp) * 30 + p ^. _y)) highlight
+    return $ Basic.wrapFigures (basic $ conf comp) $ base
+      ++ (translate (Vect.V2 0 (maybe 0 id (hover comp) * 30 + p ^. _y)) highlight
       : V.toList textTextures)
 
   useCache c1 c2 = hover c1 == hover c2
@@ -80,5 +80,7 @@ instance EventType SelectionEvent where
 new :: Config -> MiniLight Selection
 new conf = do
   font  <- Font.loadFontFrom (fontConfig conf)
-  layer <- Layer.newNineTile $ Layer.Config (basic conf) (image conf)
+  layer <- Layer.newNineTile $ Layer.Config
+    (Basic.defConfig { Basic.size = Basic.size $ basic conf })
+    (image conf)
   return $ Selection {font = font, conf = conf, hover = Nothing, layer = layer}
