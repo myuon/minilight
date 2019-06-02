@@ -33,19 +33,21 @@ toHook =
 -- | A configuration for a component
 data ComponentConfig = ComponentConfig {
   componentType :: T.Text,
+  tagID :: Maybe T.Text,
   properties :: Value,
   hooks :: Maybe (HM.HashMap T.Text Hook)
 }
 
 instance ToJSON ComponentConfig where
-  toJSON v = toJSON $ HM.fromList [("type" :: String, String (componentType v)), ("properties", properties v)]
+  toJSON v = toJSON $ HM.fromList $ [("type" :: String, String (componentType v)), ("properties", properties v)] ++ maybe [] (\x -> [("id", String x)]) (tagID v)
 
 instance FromJSON ComponentConfig where
   parseJSON = withObject "component" $ \v -> do
     componentType <- v .: "type"
+    tagID <- v .:? "id"
     props <- v .: "properties"
 
-    return $ ComponentConfig componentType props Nothing
+    return $ ComponentConfig componentType tagID props Nothing
 
 -- | A configuration for the application itself
 data AppConfig = AppConfig {

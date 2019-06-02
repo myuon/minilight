@@ -218,6 +218,9 @@ parseAppConfig = conf (Context V.empty HM.empty HM.empty)
         hooks <-
           sequence
             $ (fmap (\(Object o) -> mapM toHook o) $ HM.lookup "hooks" obj)
-        Right $ ComponentConfig name props hooks
+        Right $ ComponentConfig name
+                                (fmap (\(String s) -> s) $ HM.lookup "id" obj)
+                                props
+                                hooks
       _ -> Left $ "Invalid format: " <> T.pack (show nameValue)
   component _ ast = Left $ "Invalid format: " <> T.pack (show ast)
