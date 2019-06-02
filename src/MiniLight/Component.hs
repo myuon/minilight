@@ -6,6 +6,7 @@ module MiniLight.Component (
 
   ComponentUnit(..),
   Component,
+  _unsafeAs,
   newComponent,
   getComponentSize,
   getUID,
@@ -25,6 +26,7 @@ import MiniLight.Light
 import MiniLight.Event
 import MiniLight.Figure
 import qualified SDL
+import Unsafe.Coerce
 
 type HookMap = HM.HashMap T.Text (T.Text, Object -> Value)
 
@@ -93,6 +95,12 @@ data Component = forall c. ComponentUnit c => Component {
   cache :: IORef [Figure],
   callbackObject :: Maybe HookMap
 }
+
+-- | Unsafe coercing the component
+_unsafeAs :: (ComponentUnit c) => Lens' Component c
+_unsafeAs = lens
+  (\(Component _ c _ _ _) -> unsafeCoerce c)
+  (\(Component a _ c d e) b -> Component a (unsafeCoerce b) c d e)
 
 -- | Create a new component.
 newComponent

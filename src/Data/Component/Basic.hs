@@ -22,7 +22,7 @@ data Config = Config {
   size :: Vect.V2 Int,
   position :: Vect.V2 Int,
   disabled :: Bool
-}
+} deriving (Show)
 
 defConfig :: Config
 defConfig = Config {size = 0, position = 0, disabled = False}

@@ -41,6 +41,7 @@ In each field, you can specify an expression defined in the loader.
 module MiniLight.Loader (
   module MiniLight.Loader.Internal.Types,
   createComponentBy,
+  lookupByTagID,
 
   LoaderEnv (..),
   HasLoaderEnv (..),
@@ -94,6 +95,15 @@ createComponentBy resolver uid config = do
   uuid   <- maybe newUID return uid
   result <- liftMiniLight
     $ resolver (componentType config) uuid (properties config)
+
+  -- register tag
+  case tagID config of
+    Just tag -> do
+      regRef <- view _tagRegistry
+      liftIO $ modifyIORef' regRef $ \reg -> HM.insert tag uuid reg
+      Caster.debug $ "TagID registered: " <> show tag <> " = " <> show uuid
+    _ -> return ()
+
   return $ fmap
     ( \c -> setHooks
       c
@@ -106,6 +116,16 @@ createComponentBy resolver uid config = do
       )
     )
     result
+
+lookupByTagID
+  :: (HasLightEnv env, HasLoaderEnv env, MonadIO m)
+  => T.Text
+  -> LightT env m (Maybe T.Text)
+lookupByTagID tag = do
+  regRef <- view _tagRegistry
+  reg    <- liftIO $ readIORef regRef
+
+  return $ HM.lookup tag reg
 
 -- | Load an config file and return the resolved @AppConfig@.
 resolveConfig :: MonadIO m => FilePath -> m (Either T.Text AppConfig)
