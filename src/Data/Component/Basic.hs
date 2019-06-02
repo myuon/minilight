@@ -10,6 +10,7 @@ A component should have the followings (those can be omitted):
 -}
 module Data.Component.Basic where
 
+import Control.Lens hiding (contains)
 import Data.Aeson
 import Data.Aeson.Types
 import Data.Typeable
@@ -23,6 +24,8 @@ data Config = Config {
   position :: Vect.V2 Int,
   disabled :: Bool
 } deriving (Show)
+
+makeClassy_ ''Config
 
 defConfig :: Config
 defConfig = Config {size = 0, position = 0, disabled = False}

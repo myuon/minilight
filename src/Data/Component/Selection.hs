@@ -38,11 +38,17 @@ data Selection = Selection {
   conf :: Config
 }
 
-makeLensesWith lensRules_ ''Config
+makeClassy_ ''Config
 makeLensesWith lensRules_ ''Selection
 
-hoverL :: Lens' Selection (Maybe Int)
-hoverL = lens hover (\env r -> env { hover = r })
+instance Basic.HasConfig Config where
+  config = _basic
+
+instance HasConfig Selection where
+  config = _conf
+
+instance Basic.HasConfig Selection where
+  config = _conf . _basic
 
 instance ComponentUnit Selection where
   update = return
@@ -57,15 +63,14 @@ instance ComponentUnit Selection where
       ++ (translate (Vect.V2 0 (maybe 0 id (hover comp) * 30 + p ^. _y)) highlight
       : V.toList textTextures)
 
-  -- first-aid for caching
-  useCache c1 c2 = Basic.disabled (basic (conf c1)) == Basic.disabled (basic (conf c2)) && hover c1 == hover c2
+  useCache c1 c2 = c1 ^. Basic._disabled == c2 ^. Basic._disabled && c1 ^. _hover == c2 ^. _hover
 
   onSignal = Basic.wrapSignal (basic . conf) $ \ev sel -> flip execStateT sel $ do
     uid <- view _uid
 
     case ev `asSignal` uid of
       Just (Basic.MouseOver pos) | (pos ^. _y) `div` 30 <= V.length (labels (conf sel)) - 1 -> do
-        hoverL .= Just ((pos ^. _y) `div` 30)
+        _hover .= Just ((pos ^. _y) `div` 30)
       Just (Basic.MouseReleased pos) | (pos ^. _y) `div` 30 <= V.length (labels (conf sel)) - 1 -> do
         lift $ emit $ Select ((pos ^. _y) `div` 30)
       _ -> return ()
