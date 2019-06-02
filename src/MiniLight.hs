@@ -147,11 +147,12 @@ runMainloop conv conf initial userloop = do
   events      <- liftIO $ newMVar []
   signalQueue <- liftIO $ newIORef []
   reg         <- R.new
+  tag         <- liftIO $ newIORef $ HM.empty
   conf        <- liftIO $ newIORef $ AppConfig V.empty V.empty
 
   run
     (LoopEnv {keyStates = HM.empty, events = events, signalQueue = signalQueue})
-    (LoaderEnv {registry = reg, appConfig = conf})
+    (LoaderEnv {registry = reg, tagRegistry = tag, appConfig = conf})
     initial
  where
   run loop loader s = do

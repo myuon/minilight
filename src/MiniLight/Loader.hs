@@ -64,6 +64,7 @@ import qualified Data.Aeson.Diff as Diff
 import Data.Aeson.Patch
 import Data.Aeson.Pointer
 import Data.IORef
+import qualified Data.HashMap.Strict as HM
 import qualified Data.Registry as R
 import qualified Data.Text as T
 import qualified Data.Vector as V
@@ -73,15 +74,26 @@ import MiniLight.Component
 import MiniLight.Loader.Internal.Types
 import MiniLight.Loader.Internal.Resolver (resolve, resolveWith, parseAppConfig, emptyContext, Context(..))
 
+-- | The environment for config loader
+data LoaderEnv = LoaderEnv {
+  registry :: R.Registry Component,
+  tagRegistry :: IORef (HM.HashMap T.Text T.Text),
+  appConfig :: IORef AppConfig
+}
+
+makeClassy_ ''LoaderEnv
+
 -- | Create a component with given resolver.
 createComponentBy
-  :: Resolver
+  :: (HasLoaderEnv env, HasLightEnv env, MonadIO m)
+  => Resolver
   -> Maybe T.Text
   -> ComponentConfig
-  -> MiniLight (Either String Component)
+  -> LightT env m (Either String Component)
 createComponentBy resolver uid config = do
   uuid   <- maybe newUID return uid
-  result <- resolver (componentType config) uuid (properties config)
+  result <- liftMiniLight
+    $ resolver (componentType config) uuid (properties config)
   return $ fmap
     ( \c -> setHooks
       c
@@ -94,14 +106,6 @@ createComponentBy resolver uid config = do
       )
     )
     result
-
--- | The environment for config loader
-data LoaderEnv = LoaderEnv {
-  registry :: R.Registry Component,
-  appConfig :: IORef AppConfig
-}
-
-makeClassy_ ''LoaderEnv
 
 -- | Load an config file and return the resolved @AppConfig@.
 resolveConfig :: MonadIO m => FilePath -> m (Either T.Text AppConfig)
@@ -127,7 +131,7 @@ loadAppConfig path mapper = fmap (maybe () id) $ runMaybeT $ do
 
   confs <- lift $ fmap (V.mapMaybe id) $ V.forM (app conf) $ \conf -> do
     uid    <- newUID
-    result <- liftMiniLight $ createComponentBy mapper (Just uid) conf
+    result <- createComponentBy mapper (Just uid) conf
 
     case result of
       Left e -> do
@@ -200,9 +204,7 @@ patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
 
     newID     <- lift newUID
     component <- do
-      result <- lift $ liftMiniLight $ createComponentBy resolver
-                                                         (Just newID)
-                                                         compConf
+      result <- lift $ createComponentBy resolver (Just newID) compConf
 
       case result of
         Left err -> do
@@ -255,9 +257,7 @@ patchAppConfig path resolver = fmap (maybe () id) $ runMaybeT $ do
     let uid = uuid appConf V.! n
 
     component <- do
-      result <- lift $ liftMiniLight $ createComponentBy resolver
-                                                         (Just uid)
-                                                         compConf
+      result <- lift $ createComponentBy resolver (Just uid) compConf
 
       case result of
         Left err -> do
