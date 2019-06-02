@@ -2,7 +2,7 @@
 -}
 module Data.Component.Resolver (
   resolver,
-  foldResult,
+  extendResolver,
 ) where
 
 import Control.Monad
@@ -42,3 +42,13 @@ resolver name uid props = case name of
     resultM (fromJSON props) $ newComponent uid <=< Layer.newNineTile
   "selection" -> resultM (fromJSON props) $ newComponent uid <=< Selection.new
   _           -> return $ Left $ "Unsupported component: " ++ T.unpack name
+
+extendResolver
+  :: (FromJSON a, ComponentUnit c)
+  => T.Text  -- ^ Name
+  -> (a -> MiniLight c)  -- ^ Constructor of the component
+  -> Resolver  -- ^ Old resolver
+  -> Resolver
+extendResolver newName func resolver name uid props = if name == newName
+  then resultM (fromJSON props) $ newComponent uid <=< func
+  else resolver name uid props
