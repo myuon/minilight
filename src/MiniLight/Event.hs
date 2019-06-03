@@ -6,8 +6,10 @@
 module MiniLight.Event (
   Event (..),
   EventType (..),
+  EventData (..),
   signal,
   asSignal,
+  asEventData,
 ) where
 
 import qualified SDL
@@ -42,7 +44,6 @@ fromDynamic (Dynamic t v) | Just HRefl <- t `eqTypeRep` rep = Just v
 -- | Event type representation
 data Event
   = Signal T.Text Dynamic
-  | GlobalSignal T.Text Value
   | RawEvent SDL.Event
   | NotifyEvent Notify.Event
 
@@ -52,3 +53,15 @@ signal t v = Signal t (toDyn v)
 asSignal :: EventType a => Event -> T.Text -> Maybe a
 asSignal (Signal t1 v) t2 | t1 == t2 = fromDynamic v
 asSignal _             _             = Nothing
+
+-- | Canonical datatype of 'Event'. It consists of event name and event data itself.
+data EventData = EventData T.Text Value
+  deriving (Show, Typeable)
+
+instance EventType EventData where
+  getEventType (EventData t _) = t
+  getEventProperties (EventData _ o) = HM.singleton "data" o
+
+asEventData :: Event -> Maybe EventData
+asEventData (Signal _ v) = fromDynamic v
+asEventData _            = Nothing

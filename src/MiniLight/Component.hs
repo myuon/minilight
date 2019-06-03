@@ -50,8 +50,9 @@ emit et = do
 
   hs <- view _callbacks
   case HM.lookup (getEventType et) =<< hs of
-    Just (name, param) -> liftIO
-      $ modifyIORef' ref (GlobalSignal name (param $ getEventProperties et) :)
+    Just (name, param) -> liftIO $ modifyIORef'
+      ref
+      (signal uid (EventData name (param $ getEventProperties et)) :)
     Nothing -> return ()
 
 -- | CompoonentUnit typeclass provides a way to define a new component.
