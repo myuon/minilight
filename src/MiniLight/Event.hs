@@ -43,18 +43,30 @@ fromDynamic (Dynamic t v) | Just HRefl <- t `eqTypeRep` rep = Just v
 
 -- | Event type representation
 data Event
-  = Signal T.Text Dynamic
+  = Signal T.Text (Maybe T.Text) Dynamic
   | RawEvent SDL.Event
   | NotifyEvent Notify.Event
 
-signal :: EventType a => T.Text -> a -> Event
-signal t v = Signal t (toDyn v)
+-- | Create a signal event.
+signal
+  :: EventType a
+  => T.Text  -- ^ source component ID
+  -> Maybe T.Text  -- ^ target component ID, leave Nothing if this is a global event
+  -> a
+  -> Event
+signal s t v = Signal s t (toDyn v)
 
-asSignal :: EventType a => Event -> T.Text -> Maybe a
-asSignal (Signal t1 v) t2 | t1 == t2 = fromDynamic v
-asSignal _             _             = Nothing
+-- | Cast a signal event to some 'EventType'.
+asSignal
+  :: EventType a
+  => Event
+  -> T.Text  -- ^ target component ID
+  -> Maybe a
+asSignal (Signal _ t1 v) t2 | t1 == Just t2 = fromDynamic v
+asSignal _               _                  = Nothing
 
 -- | Canonical datatype of 'Event'. It consists of event name and event data itself.
+-- This type is usually used for global events.
 data EventData = EventData T.Text Value
   deriving (Show, Typeable)
 
@@ -62,6 +74,7 @@ instance EventType EventData where
   getEventType (EventData t _) = t
   getEventProperties (EventData _ o) = HM.singleton "data" o
 
+-- | Cast a signal event to 'EventData'
 asEventData :: Event -> Maybe EventData
-asEventData (Signal _ v) = fromDynamic v
-asEventData _            = Nothing
+asEventData (Signal _ Nothing v) = fromDynamic v
+asEventData _                    = Nothing

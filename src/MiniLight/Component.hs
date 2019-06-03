@@ -42,17 +42,18 @@ makeClassy_ ''ComponentEnv
 emit
   :: (HasLoopEnv env, HasComponentEnv env, MonadIO m, EventType et)
   => et
+  -> Maybe T.Text  -- ^ target component ID
   -> LightT env m ()
-emit et = do
+emit et target = do
   uid <- view _uid
   ref <- view _signalQueue
-  liftIO $ modifyIORef' ref $ (signal uid et :)
+  liftIO $ modifyIORef' ref $ (signal uid target et :)
 
   hs <- view _callbacks
   case HM.lookup (getEventType et) =<< hs of
     Just (name, param) -> liftIO $ modifyIORef'
       ref
-      (signal uid (EventData name (param $ getEventProperties et)) :)
+      (signal uid Nothing (EventData name (param $ getEventProperties et)) :)
     Nothing -> return ()
 
 -- | CompoonentUnit typeclass provides a way to define a new component.
