@@ -3,6 +3,7 @@ module MiniLight.Component (
   HasComponentEnv(..),
   ComponentEnv(..),
   emit,
+  emitGlobally,
 
   ComponentUnit(..),
   Component,
@@ -41,10 +42,10 @@ makeClassy_ ''ComponentEnv
 -- | Emit a signal, which will be catched at the next frame.
 emit
   :: (HasLoopEnv env, HasComponentEnv env, MonadIO m, EventType et)
-  => et
-  -> Maybe T.Text  -- ^ target component ID
+  => Maybe T.Text  -- ^ target component ID
+  -> et
   -> LightT env m ()
-emit et target = do
+emit target et = do
   uid <- view _uid
   ref <- view _signalQueue
   liftIO $ modifyIORef' ref $ (signal uid target et :)
@@ -55,6 +56,13 @@ emit et target = do
       ref
       (signal uid Nothing (EventData name (param $ getEventProperties et)) :)
     Nothing -> return ()
+
+-- | Emit a signal globally.
+emitGlobally
+  :: (HasLoopEnv env, HasComponentEnv env, MonadIO m, EventType et)
+  => et
+  -> LightT env m ()
+emitGlobally = emit Nothing
 
 -- | CompoonentUnit typeclass provides a way to define a new component.
 -- Any 'ComponentUnit' instance can be embedded into 'Component' type.

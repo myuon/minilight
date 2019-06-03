@@ -71,7 +71,7 @@ instance ComponentUnit MessageLayer where
     $ \ev c -> view _uid >>= \u -> go (ev,u) c
       where
         go (uncurry asSignal -> Just (Basic.MouseReleased _)) = execStateT $ do
-          lift $ emit CME.NextPage
+          lift $ emitGlobally CME.NextPage
 
         go _ = return
 

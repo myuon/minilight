@@ -72,7 +72,7 @@ instance ComponentUnit Selection where
       Just (Basic.MouseOver pos) | (pos ^. _y) `div` 30 <= V.length (labels (conf sel)) - 1 -> do
         _hover .= Just ((pos ^. _y) `div` 30)
       Just (Basic.MouseReleased pos) | (pos ^. _y) `div` 30 <= V.length (labels (conf sel)) - 1 -> do
-        lift $ emit $ Select ((pos ^. _y) `div` 30)
+        lift $ emitGlobally $ Select ((pos ^. _y) `div` 30)
       _ -> return ()
 
   -- OMG

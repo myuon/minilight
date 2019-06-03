@@ -97,7 +97,7 @@ wrapSignal getter f ev comp = if disabled (getter comp)
     emitBasicSignal ev (getter comp)
     f               ev comp
 
--- | Basic signaling function.
+-- | Basic signaling function. Signals are emitted towards the source component.
 emitBasicSignal
   :: (HasLightEnv env, HasLoopEnv env, HasComponentEnv env, MonadIO m)
   => Event
@@ -105,16 +105,18 @@ emitBasicSignal
   -> LightT env m ()
 emitBasicSignal (RawEvent (SDL.Event _ (SDL.MouseMotionEvent (SDL.MouseMotionEventData _ _ _ (SDL.P pos) _)))) conf
   | contains (areaRectangle conf) (fmap fromEnum pos)
-  = emit $ MouseOver $ fmap fromEnum pos - position conf
+  = view _uid
+    >>= \t -> emit (Just t) $ MouseOver $ fmap fromEnum pos - position conf
 emitBasicSignal (RawEvent (SDL.Event _ (SDL.MouseButtonEvent (SDL.MouseButtonEventData _ state _ _ _ (SDL.P pos))))) conf
   | contains (areaRectangle conf) (fmap fromEnum pos)
-  = emit
-    $ ( case state of
-        SDL.Pressed  -> MousePressed
-        SDL.Released -> MouseReleased
-      )
-    $ fmap fromEnum pos
-    - position conf
+  = view _uid >>= \t ->
+    emit (Just t)
+      $ ( case state of
+          SDL.Pressed  -> MousePressed
+          SDL.Released -> MouseReleased
+        )
+      $ fmap fromEnum pos
+      - position conf
 emitBasicSignal _ _ = return ()
 
 -- | Disable the component, no drawing and no event handling (update might be working though)
