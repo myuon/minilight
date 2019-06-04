@@ -15,6 +15,7 @@ module MiniLight (
   runMainloop,
   MiniLoop,
   runMiniloop,
+  runComponentEnv,
 ) where
 
 import Control.Concurrent (threadDelay, forkIO)
@@ -121,6 +122,18 @@ instance HasLoaderEnv env => HasLoaderEnv (ComponentState env) where
 
 instance HasComponentEnv (ComponentState env) where
   componentEnv = _componentEnvL
+
+-- | Run an action over a component.
+runComponentEnv
+  :: (HasLightEnv env, HasLoopEnv env)
+  => Component
+  -> (  forall env'
+      . (HasComponentEnv env', HasLoopEnv env', HasLightEnv env')
+     => LightT env' m ()
+     )
+  -> LightT env m ()
+runComponentEnv c =
+  envLightT (\env -> ComponentState env (ComponentEnv (getUID c) (getHooks c)))
 
 -- | Same as 'runMainloop' but fixing the type.
 runMiniloop :: LoopConfig -> s -> (s -> MiniLoop s) -> MiniLight ()
