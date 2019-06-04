@@ -43,11 +43,16 @@ data MessageEngine = MessageEngine {
 
 makeLensesWith lensRules_ ''MessageEngine
 
-data EngineEvent = NextPage
+data EngineEvent where
+  NextPage :: EngineEvent
+  SetMessage
+    :: V.Vector T.Text  -- ^ pages messages
+    -> EngineEvent
   deriving Typeable
 
 instance EventType EngineEvent where
   getEventType NextPage = "next-page"
+  getEventType (SetMessage _) = "set-message"
 
 instance ComponentUnit MessageEngine where
   update = execStateT $ do
@@ -74,8 +79,8 @@ instance ComponentUnit MessageEngine where
 
   useCache c1 c2 = page c1 == page c2 && textCounter c1 == textCounter c2
 
-  onSignal ev c = case asSignal ev of
-    Just NextPage -> flip execStateT c $ do
+  onSignal ev = execStateT $ case asSignal ev of
+    Just NextPage -> do
       fin <- use _finished
       unless fin $ do
         _page %= (+1)
@@ -87,7 +92,19 @@ instance ComponentUnit MessageEngine where
         messages <- use $ _config . _messages
         tex <- lift $ liftMiniLight $ text font fontColor (messages V.! p)
         _textTexture .= tex
-    _ -> return c
+    Just (SetMessage vs) -> do
+      _counter .= 0
+      _page .= 0
+
+      st <- use $ _config . _static
+      _textCounter .= if st then T.length (vs V.! 0) else 0
+
+      font        <- use _fontData
+      fontColor   <- use $ _config . _font . Font._color
+      tex         <- lift $ liftMiniLight $ text font fontColor $ vs V.! 0
+      _textTexture .= tex
+      _finished    .= st
+    _ -> return ()
 
 new :: Config -> MiniLight MessageEngine
 new conf = do
