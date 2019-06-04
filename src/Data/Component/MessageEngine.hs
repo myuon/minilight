@@ -74,22 +74,20 @@ instance ComponentUnit MessageEngine where
 
   useCache c1 c2 = page c1 == page c2 && textCounter c1 == textCounter c2
 
-  onSignal ev c = view _uid >>= \u -> go (ev,u) c
-    where
-      go (uncurry asSignal -> Just NextPage) = execStateT $ do
-        fin <- use _finished
-        unless fin $ do
-          _page %= (+1)
-          _textCounter .= 0
+  onSignal ev c = case asSignal ev of
+    Just NextPage -> flip execStateT c $ do
+      fin <- use _finished
+      unless fin $ do
+        _page %= (+1)
+        _textCounter .= 0
 
-          font <- use _fontData
-          fontColor <- use $ _config . _font . Font._color
-          p <- use _page
-          messages <- use $ _config . _messages
-          tex <- lift $ liftMiniLight $ text font fontColor (messages V.! p)
-          _textTexture .= tex
-
-      go _ = return
+        font <- use _fontData
+        fontColor <- use $ _config . _font . Font._color
+        p <- use _page
+        messages <- use $ _config . _messages
+        tex <- lift $ liftMiniLight $ text font fontColor (messages V.! p)
+        _textTexture .= tex
+    _ -> return c
 
 new :: Config -> MiniLight MessageEngine
 new conf = do

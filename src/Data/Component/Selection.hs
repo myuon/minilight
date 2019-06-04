@@ -35,43 +35,35 @@ data Selection = Selection {
   layer :: Layer.Layer,
   font :: SDL.Font.Font,
   hover :: Maybe Int,
-  conf :: Config
+  config :: Config
 }
 
-makeClassy_ ''Config
+makeLensesWith lensRules_ ''Config
 makeLensesWith lensRules_ ''Selection
 
 instance Basic.HasConfig Config where
   config = _basic
-
-instance HasConfig Selection where
-  config = _conf
-
-instance Basic.HasConfig Selection where
-  config = _conf . _basic
 
 instance ComponentUnit Selection where
   update = return
 
   figures comp = do
     let p = Vect.V2 15 10
-    textTextures <- V.forM (V.indexed $ labels $ conf comp) $ \(i,label) -> liftMiniLight $ fmap (translate (p + Vect.V2 0 (i * 30))) $ text (font comp) (Font.color $ fontConfig $ conf comp) label
+    textTextures <- V.forM (V.indexed $ labels $ comp ^. _config) $ \(i,label) -> liftMiniLight $ fmap (translate (p + Vect.V2 0 (i * 30))) $ text (font comp) (Font.color $ fontConfig $ comp ^. _config) label
     base <- figures (layer comp)
-    highlight <- liftMiniLight $ rectangleFilled (Vect.V4 240 240 240 40) $ _y .~ 30 $ Basic.size (basic (conf comp))
+    highlight <- liftMiniLight $ rectangleFilled (Vect.V4 240 240 240 40) $ _y .~ 30 $ comp ^. _config . Basic._size
 
-    return $ Basic.wrapFigures (basic $ conf comp) $ base
+    return $ Basic.wrapFigures (comp ^. _config . Basic.config) $ base
       ++ (translate (Vect.V2 0 (maybe 0 id (hover comp) * 30 + p ^. _y)) highlight
       : V.toList textTextures)
 
-  useCache c1 c2 = c1 ^. Basic._disabled == c2 ^. Basic._disabled && c1 ^. _hover == c2 ^. _hover
+  useCache c1 c2 = c1 ^. _config . Basic._disabled == c2 ^. _config . Basic._disabled && c1 ^. _hover == c2 ^. _hover
 
-  onSignal = Basic.wrapSignal (basic . conf) $ \ev sel -> flip execStateT sel $ do
-    uid <- view _uid
-
-    case ev `asSignal` uid of
-      Just (Basic.MouseOver pos) | (pos ^. _y) `div` 30 <= V.length (labels (conf sel)) - 1 -> do
+  onSignal = Basic.wrapSignal (_config . Basic.config) $ \ev sel -> flip execStateT sel $ do
+    case asSignal ev of
+      Just (Basic.MouseOver pos) | (pos ^. _y) `div` 30 <= V.length (sel ^. _config . _labels) - 1 -> do
         _hover .= Just ((pos ^. _y) `div` 30)
-      Just (Basic.MouseReleased pos) | (pos ^. _y) `div` 30 <= V.length (labels (conf sel)) - 1 -> do
+      Just (Basic.MouseReleased pos) | (pos ^. _y) `div` 30 <= V.length (sel ^. _config . _labels) - 1 -> do
         lift $ emitGlobally $ Select ((pos ^. _y) `div` 30)
       _ -> return ()
 
@@ -94,4 +86,5 @@ new conf = do
   layer <- Layer.newNineTile $ Layer.Config
     (Basic.defConfig { Basic.size = Basic.size $ basic conf })
     (image conf)
-  return $ Selection {font = font, conf = conf, hover = Nothing, layer = layer}
+  return
+    $ Selection {font = font, config = conf, hover = Nothing, layer = layer}

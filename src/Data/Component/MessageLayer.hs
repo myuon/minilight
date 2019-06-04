@@ -13,6 +13,7 @@ import qualified Data.Component.MessageEngine as CME
 import qualified SDL.Vect as Vect
 
 data Config = Config {
+  basic :: Basic.Config,
   engine :: CME.Config,
   window :: CLayer.Config,
   next :: CAnim.Config
@@ -24,7 +25,7 @@ instance FromJSON Config where
     nextConf <- parseJSON =<< v .: "next"
     messageEngineConf <- parseJSON =<< v .: "engine"
 
-    return $ Config messageEngineConf layerConf nextConf
+    return $ Config (layerConf ^. Basic.config) messageEngineConf layerConf nextConf
 
 data MessageLayer = MessageLayer {
   messageEngine :: CME.MessageEngine,
@@ -33,7 +34,11 @@ data MessageLayer = MessageLayer {
   config :: Config
 }
 
+makeLensesWith lensRules_ ''Config
 makeLensesWith lensRules_ ''MessageLayer
+
+instance Basic.HasConfig Config where
+  config = _basic
 
 engineL :: Lens' MessageLayer CME.MessageEngine
 engineL = lens messageEngine (\s a -> s { messageEngine = a })
@@ -66,14 +71,12 @@ instance ComponentUnit MessageLayer where
       ++ map (translate (position + Vect.V2 ((windowSize ^. _x - cursorSize ^. _x) `div` 2) (windowSize ^. _y - cursorSize ^. _y))) cursorLayer
 
   onSignal
-    = Basic.wrapSignal (CLayer.basic . CLayer.config . layer)
+    = Basic.wrapSignal (_config . Basic.config)
     $ CME.wrapSignal _messageEngine
-    $ \ev c -> view _uid >>= \u -> go (ev,u) c
-      where
-        go (uncurry asSignal -> Just (Basic.MouseReleased _)) = execStateT $ do
-          lift $ emitGlobally CME.NextPage
-
-        go _ = return
+    $ \ev -> execStateT $ case asSignal ev of
+      Just (Basic.MouseReleased _) -> do
+        lift $ emitGlobally CME.NextPage
+      _ -> return ()
 
 new :: Config -> MiniLight MessageLayer
 new conf = do

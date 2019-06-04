@@ -1,6 +1,7 @@
 module Data.Component.Layer where
 
 import Control.Lens
+import Control.Lens.TH.Rules
 import Control.Monad
 import Data.Aeson
 import Linear
@@ -8,18 +9,6 @@ import MiniLight
 import qualified SDL
 import qualified SDL.Vect as Vect
 import qualified Data.Component.Basic as Basic
-
-data Layer = Layer {
-  layer :: Figure,
-  config :: Config
-}
-
-instance ComponentUnit Layer where
-  figures comp = return $ Basic.wrapFigures (basic $ config comp) [layer comp]
-
-  onSignal = Basic.wrapSignal (basic . config) (\_ -> return)
-
-  useCache _ _ = True
 
 data Config = Config {
   basic :: Basic.Config,
@@ -29,6 +18,24 @@ data Config = Config {
 instance FromJSON Config where
   parseJSON = Basic.wrapConfig (\b l -> return $ Config b l) $ \v ->
     v .: "image"
+
+data Layer = Layer {
+  layer :: Figure,
+  config :: Config
+}
+
+makeLensesWith lensRules_ ''Config
+makeLensesWith lensRules_ ''Layer
+
+instance Basic.HasConfig Config where
+  config = _basic
+
+instance ComponentUnit Layer where
+  figures comp = return $ Basic.wrapFigures (basic $ config comp) [layer comp]
+
+  onSignal = Basic.wrapSignal (_config . Basic.config) (\_ -> return)
+
+  useCache _ _ = True
 
 new :: Config -> MiniLight Layer
 new conf = do

@@ -59,13 +59,9 @@ signal
 signal s t v = Signal s t (toDyn v)
 
 -- | Cast a signal event to some 'EventType'.
-asSignal
-  :: EventType a
-  => Event
-  -> T.Text  -- ^ target component ID
-  -> Maybe a
-asSignal (Signal _ t1 v) t2 | t1 == Just t2 = fromDynamic v
-asSignal _               _                  = Nothing
+asSignal :: EventType a => Event -> Maybe a
+asSignal (Signal _ _ v) = fromDynamic v
+asSignal _              = Nothing
 
 -- | Cast an event to some 'SDL.Event'
 asRawEvent :: Event -> Maybe SDL.Event

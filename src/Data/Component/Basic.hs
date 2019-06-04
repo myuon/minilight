@@ -11,8 +11,10 @@ A component should have the followings (those can be omitted):
 module Data.Component.Basic where
 
 import Control.Lens hiding (contains)
+import Control.Monad
 import Data.Aeson
 import Data.Aeson.Types
+import qualified Data.HashMap.Strict as HM
 import Data.Typeable
 import qualified SDL
 import qualified SDL.Vect as Vect
@@ -68,12 +70,17 @@ data Signal where
   MouseOver
     :: Vect.V2 Int  -- ^ The relative position of the mouse pointer
     -> Signal
+  SetVisiblity :: Bool -> Signal
   deriving Typeable
 
 instance EventType Signal where
   getEventType (MousePressed _) = "mouse-pressed"
   getEventType (MouseReleased _) = "mouse-released"
   getEventType (MouseOver _) = "mouse-over"
+  getEventType (SetVisiblity _) = "set-visibility"
+
+  getEventProperties (SetVisiblity o) = HM.fromList [("visibility", Bool o)]
+  getEventProperties _ = error "not implemeneted yet"
 
 -- | This automatically applies basic configuration such as: position.
 wrapFigures :: Config -> [Figure] -> [Figure]
@@ -88,14 +95,14 @@ wrapSignal
      , MonadIO m
      , ComponentUnit c
      )
-  => (c -> Config)  -- ^ 'Config' getter
-  -> (Event -> c -> LightT env m c)  -- ^ Custom @onSignal@ function
+  => Lens' c Config  -- ^ lens to 'Config'
+  -> (Event -> c -> LightT env m c)  -- ^ custom @onSignal@ function
   -> (Event -> c -> LightT env m c)
-wrapSignal getter f ev comp = if disabled (getter comp)
-  then return comp
-  else do
-    emitBasicSignal ev (getter comp)
-    f               ev comp
+wrapSignal lens f ev comp = do
+  conf' <- handleBasicSignal ev (comp ^. lens)
+
+  when (comp ^. lens ^. _disabled) $ emitBasicSignal ev conf'
+  f ev (comp & lens .~ conf')
 
 -- | Basic signaling function. Signals are emitted towards the source component.
 emitBasicSignal
@@ -118,6 +125,16 @@ emitBasicSignal (RawEvent (SDL.Event _ (SDL.MouseButtonEvent (SDL.MouseButtonEve
       $ fmap fromEnum pos
       - position conf
 emitBasicSignal _ _ = return ()
+
+-- | handle basic signals
+handleBasicSignal
+  :: (HasLightEnv env, HasLoopEnv env, HasComponentEnv env, MonadIO m)
+  => Event
+  -> Config
+  -> LightT env m Config
+handleBasicSignal ev conf = case asSignal ev of
+  Just (SetVisiblity b) -> return $ conf { disabled = not b }
+  _                     -> return conf
 
 -- | Disable the component, no drawing and no event handling (update might be working though)
 disable :: Config -> Config
