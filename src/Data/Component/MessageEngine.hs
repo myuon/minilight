@@ -38,6 +38,7 @@ data MessageEngine = MessageEngine {
   textCounter :: Int,
   textTexture :: Figure,
   finished :: Bool,
+  currentMessages :: V.Vector T.Text,
   config :: Config
 }
 
@@ -64,14 +65,15 @@ instance ComponentUnit MessageEngine where
 
         tc <- use _textCounter
         p <- use _page
-        messages <- use $ _config . _messages
+        messages <- use _currentMessages
         when (p == V.length messages - 1 && tc == T.length (messages V.! p)) $ do
           _finished .= True
 
       _counter %= (+1)
 
   figures comp = do
-    (w, h) <- SDL.Font.size (comp ^. _fontData) (T.take (comp ^. _textCounter) $ (config comp ^. _messages) V.! (comp ^. _page))
+    let messages = comp ^. _currentMessages
+    (w, h) <- SDL.Font.size (comp ^. _fontData) (T.take (comp ^. _textCounter) $ messages V.! (comp ^. _page))
 
     return [
       clip (SDL.Rectangle 0 (Vect.V2 w h)) $ textTexture comp
@@ -104,6 +106,7 @@ instance ComponentUnit MessageEngine where
       tex         <- lift $ liftMiniLight $ text font fontColor $ vs V.! 0
       _textTexture .= tex
       _finished    .= st
+      _currentMessages .= vs
     _ -> return ()
 
 new :: Config -> MiniLight MessageEngine
@@ -112,13 +115,14 @@ new conf = do
   textTexture <- text font (conf ^. _font ^. Font._color) $ messages conf V.! 0
 
   return $ MessageEngine
-    { fontData    = font
-    , counter     = 0
-    , page        = 0
+    { fontData        = font
+    , counter         = 0
+    , page            = 0
     , textCounter = if static conf then T.length (messages conf V.! 0) else 0
-    , textTexture = textTexture
-    , finished    = static conf
-    , config      = conf
+    , textTexture     = textTexture
+    , finished        = static conf
+    , currentMessages = messages conf
+    , config          = conf
     }
 
 wrapSignal
