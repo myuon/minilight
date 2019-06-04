@@ -57,7 +57,7 @@ instance ComponentUnit Selection where
       ++ (translate (Vect.V2 0 (maybe 0 id (hover comp) * 30 + p ^. _y)) highlight
       : V.toList textTextures)
 
-  useCache c1 c2 = c1 ^. _config . Basic._disabled == c2 ^. _config . Basic._disabled && c1 ^. _hover == c2 ^. _hover
+  useCache c1 c2 = c1 ^. _config . Basic._visible == c2 ^. _config . Basic._visible && c1 ^. _hover == c2 ^. _hover
 
   onSignal = Basic.wrapSignal (_config . Basic.config) $ \ev -> execStateT $ do
     labels <- use $ _config . _labels

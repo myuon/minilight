@@ -24,13 +24,13 @@ import MiniLight
 data Config = Config {
   size :: Vect.V2 Int,
   position :: Vect.V2 Int,
-  disabled :: Bool
+  visible :: Bool
 } deriving (Show)
 
 makeClassy_ ''Config
 
 defConfig :: Config
-defConfig = Config {size = 0, position = 0, disabled = False}
+defConfig = Config {size = 0, position = 0, visible = True}
 
 instance FromJSON Config where
   parseJSON = withObject "config" $ \v -> do
@@ -42,10 +42,10 @@ instance FromJSON Config where
     position <- (\w -> maybe (return 0) w positionMaybe) $ withObject "position" $ \v ->
       Vect.V2 <$> v .: "x" <*> v .: "y"
 
-    disabledMaybe <- v .:? "disabled"
-    let disabled = maybe False id disabledMaybe
+    visibleMaybe <- v .:? "visible"
+    let visible = maybe True id visibleMaybe
 
-    return $ Config size position disabled
+    return $ Config size position visible
 
 -- | This wrapper function is useful when you write your component config parser.
 wrapConfig
@@ -85,7 +85,7 @@ instance EventType Signal where
 -- | This automatically applies basic configuration such as: position.
 wrapFigures :: Config -> [Figure] -> [Figure]
 wrapFigures conf fs =
-  if disabled conf then [] else map (translate (position conf)) fs
+  if not (conf ^. _visible) then [] else map (translate (position conf)) fs
 
 -- | This wrapper function is useful when you write your own 'onSignal' component.
 wrapSignal
@@ -101,7 +101,7 @@ wrapSignal
 wrapSignal lens f ev comp = do
   conf' <- handleBasicSignal ev (comp ^. lens)
 
-  when (not $ comp ^. lens ^. _disabled) $ emitBasicSignal ev conf'
+  when (comp ^. lens ^. _visible) $ emitBasicSignal ev conf'
   f ev (comp & lens .~ conf')
 
 -- | Basic signaling function. Signals are emitted towards the source component.
@@ -133,16 +133,8 @@ handleBasicSignal
   -> Config
   -> LightT env m Config
 handleBasicSignal ev conf = case asSignal ev of
-  Just (SetVisiblity b) -> return $ conf { disabled = not b }
+  Just (SetVisiblity b) -> return $ conf { visible = b }
   _                     -> return conf
-
--- | Disable the component, no drawing and no event handling (update might be working though)
-disable :: Config -> Config
-disable conf = conf { disabled = True }
-
--- | Enable the component
-enable :: Config -> Config
-enable conf = conf { disabled = False }
 
 contains :: (Ord a, Num a) => SDL.Rectangle a -> Vect.V2 a -> Bool
 contains (SDL.Rectangle (Vect.P (Vect.V2 x y)) (Vect.V2 w h)) (Vect.V2 px py) =
