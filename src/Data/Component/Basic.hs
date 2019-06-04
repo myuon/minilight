@@ -101,7 +101,7 @@ wrapSignal
 wrapSignal lens f ev comp = do
   conf' <- handleBasicSignal ev (comp ^. lens)
 
-  when (comp ^. lens ^. _disabled) $ emitBasicSignal ev conf'
+  when (not $ comp ^. lens ^. _disabled) $ emitBasicSignal ev conf'
   f ev (comp & lens .~ conf')
 
 -- | Basic signaling function. Signals are emitted towards the source component.

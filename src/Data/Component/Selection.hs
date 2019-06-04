@@ -59,11 +59,13 @@ instance ComponentUnit Selection where
 
   useCache c1 c2 = c1 ^. _config . Basic._disabled == c2 ^. _config . Basic._disabled && c1 ^. _hover == c2 ^. _hover
 
-  onSignal = Basic.wrapSignal (_config . Basic.config) $ \ev sel -> flip execStateT sel $ do
+  onSignal = Basic.wrapSignal (_config . Basic.config) $ \ev -> execStateT $ do
+    labels <- use $ _config . _labels
+
     case asSignal ev of
-      Just (Basic.MouseOver pos) | (pos ^. _y) `div` 30 <= V.length (sel ^. _config . _labels) - 1 -> do
+      Just (Basic.MouseOver pos) | (pos ^. _y) `div` 30 <= V.length labels - 1 -> do
         _hover .= Just ((pos ^. _y) `div` 30)
-      Just (Basic.MouseReleased pos) | (pos ^. _y) `div` 30 <= V.length (sel ^. _config . _labels) - 1 -> do
+      Just (Basic.MouseReleased pos) | (pos ^. _y) `div` 30 <= V.length labels - 1 -> do
         lift $ emitGlobally $ Select ((pos ^. _y) `div` 30)
       _ -> return ()
 
