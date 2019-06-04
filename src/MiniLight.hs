@@ -16,6 +16,7 @@ module MiniLight (
   MiniLoop,
   runMiniloop,
   runComponentEnv,
+  (@@!),
 ) where
 
 import Control.Concurrent (threadDelay, forkIO)
@@ -30,6 +31,7 @@ import qualified Data.HashMap.Strict as HM
 import Data.Maybe
 import Data.IORef
 import qualified Data.Registry as R
+import qualified Data.Text as T
 import qualified Data.Vector as V
 import Graphics.Text.TrueType
 import MiniLight.Component
@@ -134,6 +136,27 @@ runComponentEnv
   -> LightT env m ()
 runComponentEnv c =
   envLightT (\env -> ComponentState env (ComponentEnv (getUID c) (getHooks c)))
+
+
+-- | Emit a signal with a loader-defined target name
+-- @
+-- (@@!) :: EventType et => T.Text -> et -> MiniLoop ()
+-- @
+(@@!)
+  :: ( EventType et
+     , HasLoaderEnv env
+     , HasLoopEnv env
+     , HasLightEnv env
+     , MonadIO m
+     )
+  => T.Text
+  -> et
+  -> LightT env m ()
+t @@! ev = do
+  key <- fmap (\(Just x) -> x) $ lookupByTagID t
+  reg <- view _registry
+  v   <- reg R.! key
+  runComponentEnv v $ emit (Just key) $ ev
 
 -- | Same as 'runMainloop' but fixing the type.
 runMiniloop :: LoopConfig -> s -> (s -> MiniLoop s) -> MiniLight ()
