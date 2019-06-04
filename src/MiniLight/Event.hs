@@ -9,6 +9,8 @@ module MiniLight.Event (
   EventData (..),
   signal,
   asSignal,
+  asRawEvent,
+  asNotifyEvent,
   asEventData,
 ) where
 
@@ -64,6 +66,16 @@ asSignal
   -> Maybe a
 asSignal (Signal _ t1 v) t2 | t1 == Just t2 = fromDynamic v
 asSignal _               _                  = Nothing
+
+-- | Cast an event to some 'SDL.Event'
+asRawEvent :: Event -> Maybe SDL.Event
+asRawEvent (RawEvent e) = Just e
+asRawEvent _            = Nothing
+
+-- | Cast an event to some 'Notify.Event'
+asNotifyEvent :: Event -> Maybe Notify.Event
+asNotifyEvent (NotifyEvent e) = Just e
+asNotifyEvent _               = Nothing
 
 -- | Canonical datatype of 'Event'. It consists of event name and event data itself.
 -- This type is usually used for global events.

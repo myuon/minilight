@@ -23,7 +23,7 @@ import Control.Lens
 import qualified Control.Monad.Caster as Caster
 import Control.Monad.Catch
 import Control.Monad.Reader
-import Data.Foldable (foldlM)
+import Data.Foldable
 import Data.Hashable (Hashable(..))
 import qualified Data.HashMap.Strict as HM
 import Data.Maybe
@@ -195,16 +195,26 @@ runMainloop conv conf initial userloop = do
 
     s' <- envLightT (\env -> conv env loop loader) $ userloop s
 
-    liftIO $ SDL.present renderer
-
-    liftIO $ threadDelay (100000 `div` 60)
-    events <- SDL.pollEvents
-    keys   <- SDL.getKeyboardState
-
+    -- event handling
     envLightT (\env -> conv env loop loader) $ do
       evref  <- view _events
       events <- liftIO $ modifyMVar evref (\a -> return ([], a))
+      let (componentEvent, globalEvent, notifyEvent) = foldl'
+            ( \(a, b, c) -> \case
+              NotifyEvent n            -> (a, b, n : c)
+              ev@(Signal _ (Just t) _) -> ((t, ev) : a, b, c)
+              ev                       -> (a, ev : b, c)
+            )
+            ([], [], [])
+            events
 
+      -- send an event to the target
+      forM_ componentEvent $ \(target, ev) -> do
+        R.update (loader ^. _registry) target $ \v -> envLightT
+          (\env -> ComponentState env (ComponentEnv (getUID v) (getHooks v)))
+          (onSignal ev v)
+
+      -- send a global event to all components
       R.modifyV_ (loader ^. _registry) $ \comp -> do
         foldlM
           ( \comp ev ->
@@ -216,19 +226,18 @@ runMainloop conv conf initial userloop = do
               $ onSignal ev comp
           )
           comp
-          events
+          globalEvent
 
-      forM_
-          ( catMaybes $ map
-            ( \e -> case e of
-              NotifyEvent ev -> Just ev
-              _              -> Nothing
-            )
-            events
-          )
-        $ \ev -> patchAppConfig
-            (fromJust $ appConfigFile conf)
-            (componentResolver conf)
+      -- process notification events
+      forM_ notifyEvent
+        $ \ev -> patchAppConfig (fromJust $ appConfigFile conf)
+                                (componentResolver conf)
+
+    liftIO $ SDL.present renderer
+
+    liftIO $ threadDelay (100000 `div` 60)
+    events <- SDL.pollEvents
+    keys   <- SDL.getKeyboardState
 
     envLightT (\env -> conv env loop loader) $ do
       evref   <- view _events
