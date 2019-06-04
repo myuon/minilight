@@ -70,16 +70,16 @@ data Signal where
   MouseOver
     :: Vect.V2 Int  -- ^ The relative position of the mouse pointer
     -> Signal
-  SetVisiblity :: Bool -> Signal
+  SetVisibility :: Bool -> Signal
   deriving Typeable
 
 instance EventType Signal where
   getEventType (MousePressed _) = "mouse-pressed"
   getEventType (MouseReleased _) = "mouse-released"
   getEventType (MouseOver _) = "mouse-over"
-  getEventType (SetVisiblity _) = "set-visibility"
+  getEventType (SetVisibility _) = "set-visibility"
 
-  getEventProperties (SetVisiblity o) = HM.fromList [("visibility", Bool o)]
+  getEventProperties (SetVisibility o) = HM.fromList [("visibility", Bool o)]
   getEventProperties _ = error "not implemeneted yet"
 
 -- | This automatically applies basic configuration such as: position.
@@ -133,8 +133,8 @@ handleBasicSignal
   -> Config
   -> LightT env m Config
 handleBasicSignal ev conf = case asSignal ev of
-  Just (SetVisiblity b) -> return $ conf { visible = b }
-  _                     -> return conf
+  Just (SetVisibility b) -> return $ conf { visible = b }
+  _                      -> return conf
 
 contains :: (Ord a, Num a) => SDL.Rectangle a -> Vect.V2 a -> Bool
 contains (SDL.Rectangle (Vect.P (Vect.V2 x y)) (Vect.V2 w h)) (Vect.V2 px py) =
