@@ -4,6 +4,7 @@ import Control.Lens
 import Control.Lens.TH.Rules
 import Control.Monad.State
 import Data.Aeson
+import Data.Typeable (Typeable)
 import Linear
 import MiniLight
 import qualified Data.Component.Basic as Basic
@@ -46,6 +47,13 @@ engineL = lens messageEngine (\s a -> s { messageEngine = a })
 cursorL :: Lens' MessageLayer CAnim.AnimationLayer
 cursorL = lens cursor (\s a -> s { cursor = a })
 
+data MessageLayerEvent where
+  Finish :: MessageLayerEvent
+  deriving Typeable
+
+instance EventType MessageLayerEvent where
+  getEventType Finish = "finish"
+
 instance ComponentUnit MessageLayer where
   update = execStateT $ do
     zoom engineL $ do
@@ -75,7 +83,11 @@ instance ComponentUnit MessageLayer where
     $ CME.wrapSignal _messageEngine
     $ \ev -> execStateT $ case asSignal ev of
       Just (Basic.MouseReleased _) -> do
-        lift $ emitGlobally CME.NextPage
+        me <- use _messageEngine
+
+        if me ^. CME._finished
+          then lift $ emitGlobally Finish
+          else lift $ emitGlobally CME.NextPage
       _ -> return ()
 
 new :: Config -> MiniLight MessageLayer
