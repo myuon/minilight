@@ -91,7 +91,7 @@ instance ComponentUnit MessageEngine where
         font <- use _fontData
         fontColor <- use $ _config . _font . Font._color
         p <- use _page
-        messages <- use $ _config . _messages
+        messages <- use _currentMessages
         tex <- lift $ liftMiniLight $ text font fontColor (messages V.! p)
         _textTexture .= tex
     Just (SetMessage vs) -> do
