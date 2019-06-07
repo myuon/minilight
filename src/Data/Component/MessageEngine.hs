@@ -47,7 +47,7 @@ makeLensesWith lensRules_ ''MessageEngine
 data EngineEvent where
   NextPage :: EngineEvent
   SetMessage
-    :: V.Vector T.Text  -- ^ pages messages
+    :: [T.Text]  -- ^ pages messages
     -> EngineEvent
   deriving Typeable
 
@@ -94,7 +94,8 @@ instance ComponentUnit MessageEngine where
         messages <- use _currentMessages
         tex <- lift $ liftMiniLight $ text font fontColor (messages V.! p)
         _textTexture .= tex
-    Just (SetMessage vs) -> do
+    Just (SetMessage ms) -> do
+      let vs = V.fromList ms
       _counter .= 0
       _page .= 0
 
