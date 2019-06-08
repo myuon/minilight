@@ -35,7 +35,8 @@ data Selection = Selection {
   layer :: Layer.Layer,
   font :: SDL.Font.Font,
   hover :: Maybe Int,
-  config :: Config
+  config :: Config,
+  currentLabels :: V.Vector T.Text
 }
 
 makeLensesWith lensRules_ ''Config
@@ -49,7 +50,7 @@ instance ComponentUnit Selection where
 
   figures comp = do
     let p = Vect.V2 15 10
-    textTextures <- V.forM (V.indexed $ labels $ comp ^. _config) $ \(i,label) -> liftMiniLight $ fmap (translate (p + Vect.V2 0 (i * 30))) $ text (font comp) (Font.color $ fontConfig $ comp ^. _config) label
+    textTextures <- V.forM (V.indexed $ comp ^. _currentLabels) $ \(i,label) -> liftMiniLight $ fmap (translate (p + Vect.V2 0 (i * 30))) $ text (font comp) (Font.color $ fontConfig $ comp ^. _config) label
     base <- figures (layer comp)
     highlight <- liftMiniLight $ rectangleFilled (Vect.V4 240 240 240 40) $ _y .~ 30 $ comp ^. _config . Basic._size
 
@@ -57,10 +58,12 @@ instance ComponentUnit Selection where
       ++ (translate (Vect.V2 0 (maybe 0 id (hover comp) * 30 + p ^. _y)) highlight
       : V.toList textTextures)
 
-  useCache c1 c2 = c1 ^. _config . Basic._visible == c2 ^. _config . Basic._visible && c1 ^. _hover == c2 ^. _hover
+  useCache c1 c2
+    = c1 ^. _currentLabels == c2 ^. _currentLabels
+    && c1 ^. _config . Basic._visible == c2 ^. _config . Basic._visible && c1 ^. _hover == c2 ^. _hover
 
   onSignal = Basic.wrapSignal (_config . Basic.config) $ \ev -> execStateT $ do
-    labels <- use $ _config . _labels
+    labels <- use _currentLabels
 
     case asSignal ev of
       Just (Basic.MouseOver pos) | (pos ^. _y) `div` 30 <= V.length labels - 1 -> do
@@ -69,18 +72,25 @@ instance ComponentUnit Selection where
         lift $ emitGlobally $ Select ((pos ^. _y) `div` 30)
       _ -> return ()
 
+    case asSignal ev of
+      Just (SetOptions xs) -> _currentLabels .= V.fromList xs
+      _ -> return ()
+
   -- OMG
   beforeClearCache _ [] = return ()
   beforeClearCache _ figs = mapM_ freeFigure $ tail figs
 
 data SelectionEvent
   = Select Int
+  | SetOptions [T.Text]
   deriving (Typeable)
 
 instance EventType SelectionEvent where
   getEventType (Select _) = "select"
+  getEventType (SetOptions _) = "set-options"
 
   getEventProperties (Select n) = HM.fromList [("index", Number $ fromIntegral n)]
+  getEventProperties (SetOptions ts) = HM.fromList [("options", Array $ fmap String $ V.fromList ts)]
 
 new :: Config -> MiniLight Selection
 new conf = do
@@ -88,5 +98,10 @@ new conf = do
   layer <- Layer.newNineTile $ Layer.Config
     (Basic.defConfig { Basic.size = Basic.size $ basic conf })
     (image conf)
-  return
-    $ Selection {font = font, config = conf, hover = Nothing, layer = layer}
+  return $ Selection
+    { font          = font
+    , config        = conf
+    , hover         = Nothing
+    , layer         = layer
+    , currentLabels = conf ^. _labels
+    }
