@@ -70,10 +70,10 @@ defLightConfig = LightConfig {headless = False}
 runLightTWith
   :: (MonadIO m, MonadMask m) => LightConfig -> LightT LightEnv m a -> m a
 runLightTWith conf prog =
-  withSDL
+  withSDLFont
     $ ( if headless conf
         then (\f -> f Nothing)
-        else withWindow . (\f w -> f (Just w))
+        else withSDL . withWindow . (\f w -> f (Just w))
       )
     $ \mwindow -> do
         renderer <- flip mapM mwindow $ \window -> do
@@ -83,10 +83,9 @@ runLightTWith conf prog =
         runReaderT (runLightT' prog)
           $ LightEnv {renderer = renderer, fontCache = fc, logger = logger}
  where
-  withSDL =
-    bracket (SDL.initializeAll >> SDL.Font.initialize)
-            (\_ -> SDL.Font.quit >> SDL.quit)
-      . const
+  withSDL     = bracket SDL.initializeAll (\_ -> SDL.quit) . const
+
+  withSDLFont = bracket SDL.Font.initialize (\_ -> SDL.Font.quit) . const
 
   withWindow =
     bracket (SDL.createWindow "window" SDL.defaultWindow) SDL.destroyWindow
