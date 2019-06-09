@@ -20,6 +20,7 @@ module MiniLight (
   runMiniloop,
   runComponentEnv,
   (@@!),
+  quit,
 ) where
 
 import Control.Concurrent (threadDelay, forkIO)
@@ -336,3 +337,9 @@ runMainloop conv conf initial userloop = do
           events
 
     unless quit $ go loop' loader s'
+
+-- | Quit the mainloop and terminate the application.
+quit :: (MonadIO m, HasLoopEnv env) => LightT env m ()
+quit = do
+  evref <- view _events
+  liftIO $ putMVar evref [RawEvent $ SDL.Event 0 SDL.QuitEvent]
