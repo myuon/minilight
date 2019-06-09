@@ -69,10 +69,11 @@ defLightConfig = LightConfig {headless = False}
 runLightTWith
   :: (MonadIO m, MonadMask m) => LightConfig -> LightT LightEnv m a -> m a
 runLightTWith conf prog =
-  ( if headless conf
-      then (\f -> f Nothing)
-      else withSDL . withWindow . (\f w -> f (Just w))
-    )
+  withSDL
+    $ ( if headless conf
+        then (\f -> f Nothing)
+        else withWindow . (\f w -> f (Just w))
+      )
     $ \mwindow -> do
         renderer <- flip mapM mwindow $ \window -> do
           SDL.createRenderer window (-1) SDL.defaultRenderer
