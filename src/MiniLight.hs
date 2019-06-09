@@ -258,10 +258,10 @@ runMainloop conv conf initial userloop = do
           )
         $ update comp
 
-    s' <- envLightT (\env -> conv env loop loader) $ userloop s
+    s'           <- envLightT (\env -> conv env loop loader) $ userloop s
 
     -- event handling
-    envLightT (\env -> conv env loop loader) $ do
+    globalEvents <- envLightT (\env -> conv env loop loader) $ do
       evref  <- view _events
       events <- liftIO $ modifyMVar evref (\a -> return ([], a))
       let (componentEvent, globalEvent, notifyEvent) = foldl'
@@ -298,6 +298,8 @@ runMainloop conv conf initial userloop = do
         $ \ev -> patchAppConfig (fromJust $ appConfigFile conf)
                                 (componentResolver conf)
 
+      return globalEvent
+
     forM_ mrenderer $ \renderer -> do
       liftIO $ SDL.present renderer
 
@@ -329,12 +331,12 @@ runMainloop conv conf initial userloop = do
                  (watchKeys conf)
 
     let quit = any
-          ( \event -> case SDL.eventPayload event of
-            SDL.WindowClosedEvent _ -> True
-            SDL.QuitEvent           -> True
-            _                       -> False
+          ( \case
+            RawEvent (SDL.Event _ (SDL.WindowClosedEvent _)) -> True
+            RawEvent (SDL.Event _ SDL.QuitEvent            ) -> True
+            _ -> False
           )
-          events
+          globalEvents
 
     unless quit $ go loop' loader s'
 
@@ -342,4 +344,4 @@ runMainloop conv conf initial userloop = do
 quit :: (MonadIO m, HasLoopEnv env) => LightT env m ()
 quit = do
   evref <- view _events
-  liftIO $ putMVar evref [RawEvent $ SDL.Event 0 SDL.QuitEvent]
+  liftIO $ modifyMVar_ evref $ return . (RawEvent (SDL.Event 0 SDL.QuitEvent) :)
