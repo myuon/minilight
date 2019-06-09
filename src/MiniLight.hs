@@ -9,6 +9,9 @@ module MiniLight (
   module MiniLight.Loader,
 
   runLightT,
+  runLightTWith,
+  LightConfig (..),
+  defLightConfig,
   LoopState (..),
   LoopConfig (..),
   defConfig,
@@ -46,14 +49,37 @@ import qualified SDL.Font
 instance Hashable SDL.Scancode where
   hashWithSalt n sc = hashWithSalt n (SDL.unwrapScancode sc)
 
--- | Run a Light monad.
+-- | Run a light monad with default configuration.
+-- @
+-- runLightT = runLightTWith defLightConfig
+-- @
 runLightT :: (MonadIO m, MonadMask m) => LightT LightEnv m a -> m a
-runLightT prog = withSDL $ withWindow $ \window -> do
-  renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
-  fc       <- loadFontCache
-  logger   <- liftIO $ Caster.stdoutLogger Caster.LogDebug
-  runReaderT (runLightT' prog)
-    $ LightEnv {renderer = renderer, fontCache = fc, logger = logger}
+runLightT = runLightTWith defLightConfig
+
+-- | Custom configuration for LightT
+data LightConfig = LightConfig {
+  headless :: Bool  -- Set False if you don't need graphical user interface (mostly for testing)
+}
+
+-- | Default configuration for 'runLightT'
+defLightConfig :: LightConfig
+defLightConfig = LightConfig {headless = False}
+
+-- | Run a Light monad.
+runLightTWith
+  :: (MonadIO m, MonadMask m) => LightConfig -> LightT LightEnv m a -> m a
+runLightTWith conf prog =
+  ( if headless conf
+      then (\f -> f Nothing)
+      else withSDL . withWindow . (\f w -> f (Just w))
+    )
+    $ \mwindow -> do
+        renderer <- flip mapM mwindow $ \window -> do
+          SDL.createRenderer window (-1) SDL.defaultRenderer
+        fc     <- loadFontCache
+        logger <- liftIO $ Caster.stdoutLogger Caster.LogDebug
+        runReaderT (runLightT' prog)
+          $ LightEnv {renderer = renderer, fontCache = fc, logger = logger}
  where
   withSDL =
     bracket (SDL.initializeAll >> SDL.Font.initialize)
@@ -212,9 +238,10 @@ runMainloop conv conf initial userloop = do
       R.register reg (getUID component) component
 
   go loop loader s = do
-    renderer <- view _renderer
-    liftIO $ SDL.rendererDrawColor renderer SDL.$= 255
-    liftIO $ SDL.clear renderer
+    mrenderer <- view _renderer
+    forM_ mrenderer $ \renderer -> do
+      liftIO $ SDL.rendererDrawColor renderer SDL.$= 255
+      liftIO $ SDL.clear renderer
 
     R.forV_ (loader ^. _registry) $ \comp -> draw comp
 
@@ -269,7 +296,8 @@ runMainloop conv conf initial userloop = do
         $ \ev -> patchAppConfig (fromJust $ appConfigFile conf)
                                 (componentResolver conf)
 
-    liftIO $ SDL.present renderer
+    forM_ mrenderer $ \renderer -> do
+      liftIO $ SDL.present renderer
 
     liftIO $ threadDelay (100000 `div` 60)
     events <- SDL.pollEvents

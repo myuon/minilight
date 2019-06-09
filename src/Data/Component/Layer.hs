@@ -48,45 +48,51 @@ new conf = do
 
 newNineTile :: Config -> MiniLight Layer
 newNineTile conf = do
-  pic <- picture $ image conf
-  let siz     = fmap toEnum $ Basic.size $ basic conf
-  let tex     = texture pic
-  let texSize = fmap toEnum $ getFigureSize pic
+  mrenderer <- view _renderer
+  target    <- flip mapM mrenderer $ \renderer -> do
+    pic <- picture $ image conf
+    let siz      = fmap toEnum $ Basic.size $ basic conf
+    let Just tex = texture pic
+    let texSize  = fmap toEnum $ getFigureSize pic
 
-  tinfo    <- SDL.queryTexture tex
-  renderer <- view _renderer
+    tinfo  <- SDL.queryTexture tex
 
-  target   <- SDL.createTexture renderer
+    target <- SDL.createTexture renderer
                                 (SDL.texturePixelFormat tinfo)
                                 SDL.TextureAccessTarget
                                 siz
-  SDL.rendererRenderTarget renderer SDL.$= Just target
-  SDL.textureBlendMode target SDL.$= SDL.BlendAlphaBlend
+    SDL.rendererRenderTarget renderer SDL.$= Just target
+    SDL.textureBlendMode target SDL.$= SDL.BlendAlphaBlend
 
-  let tileSize = fmap (`div` 3) texSize
+    let tileSize = fmap (`div` 3) texSize
 
-  forM_ [0 .. 2] $ \ix -> forM_ [0 .. 2] $ \iy -> do
-    let targetSize = V2
-          (if ix == 1 then siz ^. _x - 2 * tileSize ^. _x else tileSize ^. _x)
-          (if iy == 1 then siz ^. _y - 2 * tileSize ^. _y else tileSize ^. _y)
-    let targetLoc = V2
-          ( if ix == 0
-            then 0
-            else if ix == 1 then tileSize ^. _x else siz ^. _x - tileSize ^. _x
-          )
-          ( if iy == 0
-            then 0
-            else if iy == 1 then tileSize ^. _y else siz ^. _y - tileSize ^. _y
-          )
+    forM_ [0 .. 2] $ \ix -> forM_ [0 .. 2] $ \iy -> do
+      let targetSize = V2
+            (if ix == 1 then siz ^. _x - 2 * tileSize ^. _x else tileSize ^. _x)
+            (if iy == 1 then siz ^. _y - 2 * tileSize ^. _y else tileSize ^. _y)
+      let targetLoc = V2
+            ( if ix == 0
+              then 0
+              else if ix == 1
+                then tileSize ^. _x
+                else siz ^. _x - tileSize ^. _x
+            )
+            ( if iy == 0
+              then 0
+              else if iy == 1
+                then tileSize ^. _y
+                else siz ^. _y - tileSize ^. _y
+            )
 
-    SDL.copy
-      renderer
-      tex
-      (Just $ SDL.Rectangle (SDL.P (tileSize * Vect.V2 ix iy)) tileSize)
-      (Just $ SDL.Rectangle (SDL.P targetLoc) targetSize)
+      SDL.copy
+        renderer
+        tex
+        (Just $ SDL.Rectangle (SDL.P (tileSize * Vect.V2 ix iy)) tileSize)
+        (Just $ SDL.Rectangle (SDL.P targetLoc) targetSize)
 
-  SDL.rendererRenderTarget renderer SDL.$= Nothing
+    SDL.rendererRenderTarget renderer SDL.$= Nothing
 
-  tex <- fromTexture target
+    return target
+
+  tex <- maybe (return emptyFigure) fromTexture target
   return $ Layer {layer = tex, config = conf}
-

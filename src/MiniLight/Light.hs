@@ -46,7 +46,7 @@ type FontMap = HM.HashMap FontDescriptor FilePath
 
 -- | The environment for LightT monad.
 data LightEnv = LightEnv
-  { renderer :: SDL.Renderer  -- ^ Renderer for SDL2
+  { renderer :: Maybe SDL.Renderer  -- ^ Renderer for SDL2
   , fontCache :: FontMap  -- ^ System font information
   , logger :: Caster.LogQueue  -- ^ Logger connected stdout
   }
