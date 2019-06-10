@@ -59,12 +59,18 @@ runLightT = runLightTWith defLightConfig
 
 -- | Custom configuration for LightT
 data LightConfig = LightConfig {
-  headless :: Bool  -- Set False if you don't need graphical user interface (mostly for testing)
+  headless :: Bool,  -- Set False if you don't need graphical user interface (mostly for testing)
+  logQueue :: Caster.LogLevel -> IO Caster.LogQueue,  -- ^ LogQueue for logger
+  logLevel :: Caster.LogLevel  -- ^ LogLevel for logger
 }
 
 -- | Default configuration for 'runLightT'
 defLightConfig :: LightConfig
-defLightConfig = LightConfig {headless = False}
+defLightConfig = LightConfig
+  { headless = False
+  , logQueue = Caster.stdoutLogger
+  , logLevel = Caster.LogWarn
+  }
 
 -- | Run a Light monad.
 runLightTWith
@@ -79,12 +85,11 @@ runLightTWith conf prog =
         renderer <- flip mapM mwindow $ \window -> do
           SDL.createRenderer window (-1) SDL.defaultRenderer
         fc     <- loadFontCache
-        logger <- liftIO $ Caster.stdoutLogger Caster.LogDebug
+        logger <- liftIO $ logQueue conf (logLevel conf)
         runReaderT (runLightT' prog)
           $ LightEnv {renderer = renderer, fontCache = fc, logger = logger}
  where
   withSDL     = bracket SDL.initializeAll (\_ -> SDL.quit) . const
-
   withSDLFont = bracket SDL.Font.initialize (\_ -> SDL.Font.quit) . const
 
   withWindow =
