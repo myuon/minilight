@@ -3,7 +3,7 @@ cabal-version:       2.4
 --   For further documentation, see http://haskell.org/cabal/users-guide/
 
 name:                minilight
-version:             0.4.0
+version:             0.4.1
 synopsis:            A SDL2-based graphics library, batteries-included.
 description:
   This package provides the wheel for a graphical application or a game.
