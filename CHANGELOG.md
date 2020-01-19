@@ -1,5 +1,10 @@
 # Revision history for minilight
 
+## 0.4.2 -- 2020-01-19
+
+* Other Changes:
+    * Fix sdl2 version to be 2.4.X.X (which matches libsdl2-dev:2.0.5)
+
 ## 0.4 -- 2019-06-01
 
 * Features:
