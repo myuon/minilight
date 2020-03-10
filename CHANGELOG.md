@@ -1,5 +1,9 @@
 # Revision history for minilight
 
+## 0.4.3 -- 2020-03-11
+
+* Support GHC 8.8
+
 ## 0.4.2 -- 2020-01-19
 
 * Other Changes:
