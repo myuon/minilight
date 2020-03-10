@@ -16,6 +16,8 @@ For Ubuntu 18.04:
 ~$ sudo apt install -y libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-gfx-dev
 ```
 
+For ghc-8.8, use a version `>= 0.4.3`
+
 ## Tutorial
 
 Create a new project. Assume that you have the `resource` directory under the project root, which contains the resource stuff.
