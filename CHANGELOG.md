@@ -1,5 +1,9 @@
 # Revision history for minilight
 
+## 0.4.4 -- 2020-05-05
+
+* Add `registerComponent` and `extend9tiles` functions
+
 ## 0.4.3 -- 2020-03-11
 
 * Support GHC 8.8
