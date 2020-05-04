@@ -21,6 +21,7 @@ module MiniLight (
   runComponentEnv,
   (@@!),
   quit,
+  registerComponent,
 ) where
 
 import Control.Concurrent (threadDelay, forkIO)
@@ -189,6 +190,31 @@ t @@! ev = do
   reg <- view _registry
   v   <- reg R.! key
   runComponentEnv v $ emit (Just key) $ ev
+
+
+-- | Register a component to the component system
+registerComponent
+  :: ( HasLoaderEnv env
+     , HasLightEnv env
+     , MonadIO m
+     , MonadMask m
+     , ComponentUnit c
+     )
+  => T.Text
+  -> c
+  -> LightT env m Component
+registerComponent name cu = do
+  uuid <- newUID
+  comp <- newComponent uuid cu
+
+  reg  <- view _registry
+  R.register reg uuid comp
+
+  tag <- view _tagRegistry
+  liftIO $ modifyIORef' tag $ HM.insert name uuid
+
+  return comp
+
 
 -- | Same as 'runMainloop' but fixing the type.
 runMiniloop :: LoopConfig -> s -> (s -> MiniLoop s) -> MiniLight ()

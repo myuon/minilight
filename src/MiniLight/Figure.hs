@@ -56,6 +56,58 @@ union x@(SDL.Rectangle (SDL.P c1) s1) y@(SDL.Rectangle (SDL.P c2) s2)
                              (c2 - c1 + fmap (`div` 2) (s1 + s2))
   | otherwise = union y x
 
+
+-- | Split a figure into 9 pieces and extend it to the given size frame.
+extend9tiles :: Figure -> V2 Int -> MiniLight Figure
+extend9tiles fig size = do
+  mrenderer <- view _renderer
+  target    <- flip mapM mrenderer $ \renderer -> do
+    let siz      = fmap toEnum size
+    let Just tex = texture fig
+    let texSize  = fmap toEnum $ getFigureSize fig
+
+    tinfo  <- SDL.queryTexture tex
+
+    target <- SDL.createTexture renderer
+                                (SDL.texturePixelFormat tinfo)
+                                SDL.TextureAccessTarget
+                                siz
+    SDL.rendererRenderTarget renderer SDL.$= Just target
+    SDL.textureBlendMode target SDL.$= SDL.BlendAlphaBlend
+
+    let tileSize = fmap (`div` 3) texSize
+
+    forM_ [0 .. 2] $ \ix -> forM_ [0 .. 2] $ \iy -> do
+      let targetSize = V2
+            (if ix == 1 then siz ^. _x - 2 * tileSize ^. _x else tileSize ^. _x)
+            (if iy == 1 then siz ^. _y - 2 * tileSize ^. _y else tileSize ^. _y)
+      let targetLoc = V2
+            ( if ix == 0
+              then 0
+              else if ix == 1
+                then tileSize ^. _x
+                else siz ^. _x - tileSize ^. _x
+            )
+            ( if iy == 0
+              then 0
+              else if iy == 1
+                then tileSize ^. _y
+                else siz ^. _y - tileSize ^. _y
+            )
+
+      SDL.copy renderer
+               tex
+               (Just $ SDL.Rectangle (SDL.P (tileSize * V2 ix iy)) tileSize)
+               (Just $ SDL.Rectangle (SDL.P targetLoc) targetSize)
+
+    SDL.rendererRenderTarget renderer SDL.$= Nothing
+
+    return target
+
+  tex <- maybe (return emptyFigure) fromTexture target
+  return tex
+
+
 -- | Render a figure.
 render :: (HasLightEnv env, MonadIO m, MonadMask m) => Figure -> LightT env m ()
 render fig = do
