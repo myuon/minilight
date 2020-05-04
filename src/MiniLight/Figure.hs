@@ -58,7 +58,7 @@ union x@(SDL.Rectangle (SDL.P c1) s1) y@(SDL.Rectangle (SDL.P c2) s2)
 
 
 -- | Split a figure into 9 pieces and extend it to the given size frame.
-extend9tiles :: Figure -> V2 Int -> MiniLight Figure
+extend9tiles :: Figure -> Vect.V2 Int -> MiniLight Figure
 extend9tiles fig size = do
   mrenderer <- view _renderer
   target    <- flip mapM mrenderer $ \renderer -> do
@@ -78,10 +78,10 @@ extend9tiles fig size = do
     let tileSize = fmap (`div` 3) texSize
 
     forM_ [0 .. 2] $ \ix -> forM_ [0 .. 2] $ \iy -> do
-      let targetSize = V2
+      let targetSize = Vect.V2
             (if ix == 1 then siz ^. _x - 2 * tileSize ^. _x else tileSize ^. _x)
             (if iy == 1 then siz ^. _y - 2 * tileSize ^. _y else tileSize ^. _y)
-      let targetLoc = V2
+      let targetLoc = Vect.V2
             ( if ix == 0
               then 0
               else if ix == 1
@@ -95,10 +95,11 @@ extend9tiles fig size = do
                 else siz ^. _y - tileSize ^. _y
             )
 
-      SDL.copy renderer
-               tex
-               (Just $ SDL.Rectangle (SDL.P (tileSize * V2 ix iy)) tileSize)
-               (Just $ SDL.Rectangle (SDL.P targetLoc) targetSize)
+      SDL.copy
+        renderer
+        tex
+        (Just $ SDL.Rectangle (SDL.P (tileSize * Vect.V2 ix iy)) tileSize)
+        (Just $ SDL.Rectangle (SDL.P targetLoc) targetSize)
 
     SDL.rendererRenderTarget renderer SDL.$= Nothing
 
