@@ -38,16 +38,15 @@ new = do
   return $ Button {font = font, counter = 0}
 
 main :: IO ()
-main = do
-  runLightT $ do
-    uid    <- newUID
-    button <- newComponent uid =<< new
+main = runLightT $ do
+  uid    <- newUID
+  button <- newComponent uid =<< new
 
-    runMiniloop
-      ( defConfig { appConfigFile        = Nothing
-                  , additionalComponents = [button]
-                  , componentResolver    = resolver
-                  }
-      )
-      ()
-      return
+  runMiniloop
+    ( defConfig { appConfigFile        = Nothing
+                , additionalComponents = [button]
+                , componentResolver    = resolver
+                }
+    )
+    (return ())
+    return

@@ -119,5 +119,5 @@ main = do
                   , componentResolver    = resolver
                   }
       )
-      (Game {objects = objs, pic = pic})
+      (return $ Game {objects = objs, pic = pic})
       (execStateT mainloop)

@@ -83,8 +83,8 @@ runLightTWith conf prog =
         else withSDL . withWindow . (\f w -> f (Just w))
       )
     $ \mwindow -> do
-        renderer <- flip mapM mwindow $ \window -> do
-          SDL.createRenderer window (-1) SDL.defaultRenderer
+        renderer <- forM mwindow
+          $ \window -> SDL.createRenderer window (-1) SDL.defaultRenderer
         fc     <- loadFontCache
         logger <- liftIO $ logQueue conf (logLevel conf)
         runReaderT (runLightT' prog)
@@ -217,7 +217,7 @@ registerComponent name cu = do
 
 
 -- | Same as 'runMainloop' but fixing the type.
-runMiniloop :: LoopConfig -> s -> (s -> MiniLoop s) -> MiniLight ()
+runMiniloop :: LoopConfig -> MiniLoop s -> (s -> MiniLoop s) -> MiniLight ()
 runMiniloop = runMainloop LoopState
 
 -- | Run a mainloop.
@@ -234,7 +234,7 @@ runMainloop
      )
   => (env -> LoopEnv -> LoaderEnv -> env')  -- ^ Environment conversion
   -> LoopConfig  -- ^ Loop config
-  -> s  -- ^ Initial state
+  -> LightT env' m s  -- ^ Initial monad generating initial state
   -> (s -> LightT env' m s)  -- ^ A function called in every loop
   -> LightT env m ()
 runMainloop conv conf initial userloop = do
@@ -249,8 +249,9 @@ runMainloop conv conf initial userloop = do
     (LoaderEnv {registry = reg, tagRegistry = tag, appConfig = conf})
     initial
  where
-  run loop loader s = do
+  run loop loader ms = do
     setup loop loader
+    s <- envLightT (\env -> conv env loop loader) ms
     go loop loader s
 
   setup loop loader = envLightT (\env -> conv env loop loader) $ do
