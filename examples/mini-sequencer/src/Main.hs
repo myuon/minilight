@@ -61,5 +61,5 @@ main = do
                     , componentResolver = resolver
                     }
         )
-        (Game {sound = sound})
+        (return $ Game {sound = sound})
         return

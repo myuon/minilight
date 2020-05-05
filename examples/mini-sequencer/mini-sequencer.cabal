@@ -25,7 +25,7 @@ executable mini-sequencer
     base ^>=4.12.0.0,
     bytestring,
     knob,
-    minilight,
+    minilight ^>= 0.5.0,
     mtl,
     sdl2-mixer,
     vector,
