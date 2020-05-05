@@ -8,5 +8,5 @@ spec_main = do
   describe "main" $ do
     it "should start and quit" $ do
       () <- runLightTWith (defLightConfig { headless = True }) $ do
-        runMiniloop defConfig () (\_ -> quit)
+        runMiniloop defConfig (return ()) (\_ -> quit)
       () `shouldBe` ()
